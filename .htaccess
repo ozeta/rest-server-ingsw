@@ -1,0 +1,11 @@
+
+# # av:php5-engine
+#AddHandler av-php56 .php
+
+	
+RewriteEngine On 
+
+RewriteCond %{REQUEST_FILENAME} !-f 
+RewriteRule ^(.*)$ %{ENV:BASE}\restapi.php [QSA,L]
+RewriteRule ^(.*)$ %{ENV:BASE}\rest.php [QSA,L]
+RewriteRule .* - [env=HTTP_AUTHORIZATION:%{HTTP:Authorization},last]
