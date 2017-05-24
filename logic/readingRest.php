@@ -9,10 +9,10 @@
 namespace ingsw10;
 
 
-class WaterMeterRest
+class readingRest
 {
 
-    private $name = "watermeter";
+    private $name = "reading";
     private $dao;
     private $functionArray;
 
@@ -75,20 +75,6 @@ class WaterMeterRest
 
     }
 
-    private function delete($id)
-    {
-        $response = null;
-
-        $res = $this->dao->delete($id);
-        if ($res != null) {
-            $response = new Response(201, $res);
-        } else {
-            $response = new Response(400);
-        }
-        return $response;
-
-    }
-
     private function get($id)
     {
         $response = null;
@@ -128,7 +114,7 @@ class WaterMeterRest
 
     }
 
-    private function getAllLegal($id)
+    private function getAll($id)
     {
         $response = null;
         $res = $this->dao->getAllLegal($id);
@@ -140,19 +126,6 @@ class WaterMeterRest
         return $response;
     }
 
-    private
-    function getAllPhysical($id)
-    {
-        $response = null;
-        $res = $this->dao->getAllPhysical($id);
-        if ($res == false) {
-            $response = new Response(404);
-        } else {
-            $response = new Response(200, json_encode($res, JSON_NUMERIC_CHECK));
-        }
-        return $response;
-
-    }
 
     public function parseRequest($request)
     {
@@ -160,26 +133,18 @@ class WaterMeterRest
         $tokens = $request->getUriTokens();
         $id = $tokens[1];
         if ($tokens[0] == $this->name) {
-            if ($tokens[1] == "operator" && is_numeric($tokens[2]) && $request->getRequestMethod() == 'GET') {
-                return $this->getAllLegal($tokens[2]);
-            } elseif ($tokens[1] == "physical" && is_numeric($tokens[2]) && $request->getRequestMethod() == 'GET') {
-                return $this->getAllPhysical($tokens[2]);
-            } else if ($tokens[1] == "create") {
+            if ($tokens[1] == "create") {
                 return $this->autoConfigure();
             } else if ($tokens[1] == "constraint") {
                 return $this->autoConstraint();
             } elseif ($tokens[1] == "drop") {
                 return $this->drop();
-            } elseif ($tokens[1] == "max") {
-                return $this->maxID();
             } elseif ($tokens[1] == "table") {
                 return $this->getMeta();
             } elseif (is_numeric($id)) {
                 if ($request->getRequestMethod() == 'GET') {
                     return $this->get($id);
-                } elseif ($request->getRequestMethod() == 'DELETE') {
-                    return $this->delete($id);
-                } elseif ($request->getRequestMethod() == 'PUT') {
+                }  elseif ($request->getRequestMethod() == 'PUT') {
                     return $this->update($request, $id);
                 }
             } elseif ($request->getRequestMethod() == 'POST') {
@@ -188,6 +153,7 @@ class WaterMeterRest
         }
         return $response;
     }
+
     private function getMeta()
     {
         $response = null;
@@ -199,4 +165,5 @@ class WaterMeterRest
         }
         return $response;
     }
+
 }

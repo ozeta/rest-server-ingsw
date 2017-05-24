@@ -23,7 +23,7 @@ class ParametersTableDAO
     private $configStmt;
     private $insertStmt;
     private $dropTableStmt;
-
+    private $tableName;
     private $dbUsername;
     private $PDO;
 
@@ -32,7 +32,7 @@ class ParametersTableDAO
     {
         $this->dbUsername = $username;
         $tableName = $schema . "." . $tableName;
-
+        $this->tableName = $tableName;
         try {
             #stringa caratteristica mysql
             $this->PDO = new PDO("mysql:host=$dbHost", $username, $password);
@@ -126,5 +126,15 @@ class ParametersTableDAO
         $res->bindParam(':water_cost', $water_cost);
         $res->bindParam(':tax_rate', $tax_rate);
         return QueryRunner::execute($res);
+    }
+    public function getMeta()
+    {
+        $result = null;
+        $getMetaStmt = "SHOW COLUMNS FROM $this->tableName";
+        $res = $this->PDO->prepare($getMetaStmt);
+        if (QueryRunner::execute($res)) {
+            $result = $res->fetchAll(PDO::FETCH_COLUMN,0);
+        }
+        return $result;
     }
 }

@@ -12,33 +12,32 @@ use PDO;
 use PDOException;
 
 include_once "QueryRunner.php";
+include_once "DAO.php";
 require_once "EPDOStatement.php";
 
-class WaterMeterDAO
+class readingDAO extends DAO
 {
+    protected $insertStmt;
+    protected $updateStmt;
+    protected $deleteStmt;
+    protected $selectMaxId;
+    protected $selectLegalStmt;
+    protected $selectPhysicalStmt;
 
+    protected $querySql;
+    protected $tableName;
+
+    protected $configStmt;
+    protected $dropTableStmt;
+
+    protected $dbUsername;
+    protected $addConstraintStmt;
     private $getAllByIdStmt;
+    private $getMetaStmt = "SHOW COLUMNS FROM :table";
 
-    private $insertStmt;
-    private $updateStmt;
-    private $deleteStmt;
-    private $selectMaxId;
-    private $selectLegalStmt;
-    private $selectPhysicalStmt;
-
-    private $querySql;
-    private $tableName;
-
-    private $configStmt;
-    private $dropTableStmt;
-
-    private $dbUsername;
-    private $PDO;
-    private $addConstraintStmt;
-
-
-    public function __construct($dbHost, $username, $password, $schema, $tableName, $reading, $legal, $physical)
+    public function __construct($dbHost, $username, $password, $schema, $tableName, $employee, $legal, $physical)
     {
+        parent::__construct($dbHost, $username, $password, $schema, $tableName);
         $this->dbUsername = $username;
         $tableName = "$schema.$tableName";
         $this->tableName = $tableName;
@@ -54,68 +53,57 @@ class WaterMeterDAO
 
         $this->dropTableStmt = /** @lang mysql */
             "
-            ALTER TABLE $tableName DROP FOREIGN KEY FKWatermeter681382;
-            ALTER TABLE $tableName DROP FOREIGN KEY FKWatermeter123385;
-            ALTER TABLE $tableName DROP FOREIGN KEY FKWatermeter426653;
+            ALTER TABLE $tableName DROP FOREIGN KEY FKWaterMeter828994;
+            ALTER TABLE $tableName DROP FOREIGN KEY FKWaterMeter372565;
+            ALTER TABLE $tableName DROP FOREIGN KEY FKWaterMeter69297;
             DROP TABLE IF EXISTS $tableName";
 
         $this->configStmt = /** @lang mysql */
-
             "CREATE SCHEMA IF NOT EXISTS $schema ;
             create table IF NOT EXISTS $tableName (
             id            int(11) NOT NULL AUTO_INCREMENT, 
-            city          varchar(255) NOT NULL, 
-            prov          varchar(255) NOT NULL, 
-            street        varchar(255) NOT NULL, 
-            street_number varchar(255) NOT NULL, 
-            cap           varchar(255) NOT NULL, 
-            id_physical   int(11), 
+            value         double NOT NULL, 
+            assignment    date , 
+            reading       date , 
+            id_operator   int(11) NOT NULL, 
+            watermeter_id int(11) NOT NULL, 
             id_legal      int(11), 
+            id_physical   int(11), 
             PRIMARY KEY (id));
             ";
-
         $this->addConstraintStmt = /** @lang mysql */
-            "ALTER TABLE $tableName ADD INDEX FKWatermeter681382 (id), ADD CONSTRAINT FKWatermeter681382 FOREIGN KEY (id) REFERENCES $reading (id);
-            ALTER TABLE $tableName ADD INDEX FKWatermeter123385 (id_legal), ADD CONSTRAINT FKWatermeter123385 FOREIGN KEY (id_legal) REFERENCES $legal (id);
-            ALTER TABLE $tableName ADD INDEX FKWatermeter426653 (id_physical), ADD CONSTRAINT FKWatermeter426653 FOREIGN KEY (id_physical) REFERENCES $physical (id);";
+            "ALTER TABLE $tableName  ADD INDEX FKWaterMeter828994 (id_operator), ADD CONSTRAINT FKWaterMeter828994 FOREIGN KEY (id_operator) REFERENCES $employee (id);
+            ALTER TABLE $tableName  ADD INDEX FKWaterMeter372565 (id_legal), ADD CONSTRAINT FKWaterMeter372565 FOREIGN KEY (id_legal) REFERENCES $legal (id);
+            ALTER TABLE $tableName  ADD INDEX FKWaterMeter69297 (id_physical), ADD CONSTRAINT FKWaterMeter69297 FOREIGN KEY (id_physical) REFERENCES $physical (id);";
         $this->insertStmt = /** @lang mysql */
             "INSERT INTO $tableName
             (
-            value, 
-            assignment, 
-            reading, 
-            id_operator, 
-            watermeter_id, 
-            id_legal, 
+            value,
+            assignment,
+            reading,
+            id_operator,
+            watermeter_id,
+            id_legal,
             id_physical) 
-            VALUES 
-            (:value, 
+            VALUES
+            (
+            :value, 
             :assignment, 
             :reading, 
             :id_operator, 
             :watermeter_id, 
             :id_legal, 
-            :id_physical);";
-        $this->selectLegalStmt = /** @lang mysql */
-            "SELECT *
-            FROM $tableName
-             WHERE id_legal = :id;
+            :id_physical);
             ";
-        $this->selectPhysicalStmt = /** @lang mysql */
-            "SELECT *
-            FROM $tableName
-             WHERE id_physical = :id;
-            ";
-
         $this->updateStmt = /** @lang mysql */
             "UPDATE $tableName SET 
-            city = :city, 
-            prov = :prov, 
-            street = :street, 
-            street_number = :street_number, 
-            cap = :cap, 
-            id_physical = :id_physical, 
-            id_legal = :id_legal 
+            value = :value, 
+            assignment = :assignment, 
+            reading = :reading, 
+            id_operator = :id_operator, 
+            watermeter_id = :watermeter_id, 
+            id_legal = :id_legal, 
+            id_physical = :id_physical
             WHERE id = :id;
             ";
 
@@ -142,21 +130,22 @@ class WaterMeterDAO
 
     private function bindParameters($resourceArray, $res)
     {
-        $placeholder = -1;
-        if (isset($resourceArray["owner"]["PIVA"])) {
+        $placeholder = 0;
+        if ($resourceArray["legalID"] != 0) {
             //legal
-            $res->bindParam(':id_legal', $resourceArray["owner"]["id"]);
+            $res->bindParam(':id_legal', $resourceArray["legalID"]);
             $res->bindParam(':id_physical', $placeholder);
         } else {
             //physical
-            $res->bindParam(':id_physical', $resourceArray["legal"]["id"]);
+            $res->bindParam(':id_physical', $resourceArray["physicalID"]);
             $res->bindParam(':id_legal', $placeholder);
         }
-        $res->bindParam(':city', $resourceArray["location"]["city"]);
-        $res->bindParam(':prov', $resourceArray["location"]["prov"]);
-        $res->bindParam(':street', $resourceArray["location"]["street"]);
-        $res->bindParam(':street_number', $resourceArray["location"]["streetNumber"]);
-        $res->bindParam(':cap', $resourceArray["location"]["cap"]);
+        $res->bindParam(':value', $resourceArray["value"]);
+        $res->bindParam(':assignment', $resourceArray["assignment"]);
+        $res->bindParam(':reading', $resourceArray["reading"]);
+        $res->bindParam(':watermeter_id', $resourceArray["watermeterID"]);
+        $res->bindParam(':id_operator', $resourceArray["operatorID"]);
+
         return $res;
     }
 
@@ -168,9 +157,8 @@ class WaterMeterDAO
     {
         $res = $this->PDO->prepare($this->insertStmt);
         $res = $this->bindParameters($resourceArray, $res);
-
         if (QueryRunner::execute($res)) {
-            return $this->PDO->lastInsertId('ID');
+            return $this->PDO->lastInsertId('id');
         }
         return null;
     }
@@ -184,20 +172,6 @@ class WaterMeterDAO
     }
 
 
-    /**
-     * @param $ID integer ID
-     * @return customer or false if not exists.
-     */
-
-    public function get($ID)
-    {
-        $res = $this->PDO->prepare($this->selectStmt);
-        $res->bindParam(':id', $ID, PDO::PARAM_INT);
-        if (QueryRunner::execute($res)) {
-            $result = $res->fetch(PDO::FETCH_OBJ);
-        }
-        return $result;
-    }
 
     public function getAllLegal($ID)
     {
@@ -265,14 +239,5 @@ class WaterMeterDAO
         }
         return false;
     }
-    public function getMeta()
-    {
-        $result = null;
-        $getMetaStmt = "SHOW COLUMNS FROM $this->tableName";
-        $res = $this->PDO->prepare($getMetaStmt);
-        if (QueryRunner::execute($res)) {
-            $result = $res->fetchAll(PDO::FETCH_COLUMN,0);
-        }
-        return $result;
-    }
+
 }

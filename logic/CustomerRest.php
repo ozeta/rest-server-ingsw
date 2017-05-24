@@ -123,6 +123,7 @@ class CustomerRest
 
     private function createCustomer($request)
     {
+        $response = null;
         $customerArray = json_decode($request->getAttachedJson(), true);
         $res = $this->dao->create($customerArray);
         if ($res != null) {
@@ -130,6 +131,7 @@ class CustomerRest
         } else {
             $response = new Response(400);
         }
+        return $response;
     }
 
     public function parseRequest($request)
@@ -141,7 +143,9 @@ class CustomerRest
 
         if ($tokens[0] == $this->name) {
             if ($tokens[1] == "legal") {
-                if ($request->getRequestMethod() == 'GET' and !is_numeric($id)) {
+                if ($request->getRequestMethod() == 'GET' && $tokens[2] == "table") {
+                    return $this->getMetaLegal();
+                } else if ($request->getRequestMethod() == 'GET' && !is_numeric($id)) {
                     return $this->searchLegal($tokens[2]);
                 } else if ($request->getRequestMethod() == 'GET') {
                     return $this->getLegal($id);
@@ -153,7 +157,9 @@ class CustomerRest
                     return $this->createCustomer($request);
                 }
             } elseif ($tokens[1] == "physical") {
-                if ($request->getRequestMethod() == 'GET' and !is_numeric($id)) {
+                if ($request->getRequestMethod() == 'GET' && $tokens[2] == "table") {
+                    return $this->getMetaPhysical();
+                } else if ($request->getRequestMethod() == 'GET' && !is_numeric($id)) {
                     return $this->searchPhysical($tokens[2]);
                 } else if ($request->getRequestMethod() == 'GET') {
                     return $this->getPhysical($id);
@@ -172,5 +178,28 @@ class CustomerRest
         return $response;
     }
 
+    private function getMetaLegal()
+    {
+        $response = null;
+        $res = $this->dao->getMetaLegal();
+        if ($res == false) {
+            $response = new Response(404);
+        } else {
+            $response = new Response(200, json_encode($res, JSON_NUMERIC_CHECK));
+        }
+        return $response;
+    }
+
+    private function getMetaPhysical()
+    {
+        $response = null;
+        $res = $this->dao->getMetaPhysical();
+        if ($res == false) {
+            $response = new Response(404);
+        } else {
+            $response = new Response(200, json_encode($res, JSON_NUMERIC_CHECK));
+        }
+        return $response;
+    }
 
 }

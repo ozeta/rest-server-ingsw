@@ -63,6 +63,19 @@ class ParameterRest
                 return new Response(200);
             }
             $response = new Response(400);
+        } elseif ($tokens[1] == "table"){
+            return $this->getMeta();
+        }
+        return $response;
+    }
+    private function getMeta()
+    {
+        $response = null;
+        $res = $this->dao->getMeta();
+        if ($res == false) {
+            $response = new Response(404);
+        } else {
+            $response = new Response(200, json_encode($res, JSON_NUMERIC_CHECK));
         }
         return $response;
     }

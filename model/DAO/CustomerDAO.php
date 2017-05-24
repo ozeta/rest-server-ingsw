@@ -423,4 +423,25 @@ class CustomerDAO
         }
         return false;
     }
+    public function getMetaLegal($ID)
+    {
+        $result = null;
+        $getMetaStmt = "SHOW COLUMNS FROM $this->legalTableN";
+        $res = $this->PDO->prepare($getMetaStmt);
+        $res->bindParam(':id', $ID, PDO::PARAM_INT);
+        if (QueryRunner::execute($res)) {
+            $result = $res->fetchAll(PDO::FETCH_COLUMN,0);
+        }
+        return $result;
+    }
+    public function getMetaPhysical($ID)
+    {
+        $result = null;
+        $getMetaStmt = "SHOW COLUMNS FROM $this->physicalTableN";
+        $res = $this->PDO->prepare($getMetaStmt);
+        if (QueryRunner::execute($res)) {
+            $result = $res->fetchAll(PDO::FETCH_COLUMN,0);
+        }
+        return $result;
+    }
 }

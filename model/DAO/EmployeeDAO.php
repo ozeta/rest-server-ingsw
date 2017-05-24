@@ -12,6 +12,7 @@ namespace ingsw10;
 use PDO;
 use PDOException;
 
+require_once "EPDOStatement.php";
 include_once "QueryRunner.php";
 
 class EmployeeDAO
@@ -45,6 +46,8 @@ class EmployeeDAO
             $this->PDO = new PDO("mysql:host=$dbHost", $username, $password);
             #imposta quanti errori mostrare in caso di eccezione
             $this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+           // $this->PDO->setAttribute(PDO::ATTR_STATEMENT_CLASS, array("EPDOStatement\EPDOStatement", array($this->PDO)));
+
         } catch (PDOException $e) {
             error_log($e->getMessage() . "\n\n", 3, "./server-errors.log");
         }
@@ -123,10 +126,6 @@ class EmployeeDAO
 
     }
 
-    /**
-     * @param $resourceArray legal customer parsed in Associative array
-     * @return int succeeded, returns last customer id. if fails, returns null
-     */
     public function create($resourceArray)
     {
         $res = $this->PDO->prepare($this->insertStmt);
@@ -189,7 +188,10 @@ class EmployeeDAO
         if (QueryRunner::execute($res)) {
             $result = $res->fetch(PDO::FETCH_OBJ);
         }
-        //echo var_dump($result);
+
+        echo var_dump($result);
+        $result->phone = "\u0020".$result->phone;
+        //$result->phone = '"'.$result->phone.'""';
         return $result;
     }
 
@@ -261,5 +263,14 @@ class EmployeeDAO
         }
         return false;
     }
-
+    public function getMeta()
+    {
+        $result = null;
+        $getMetaStmt = "SHOW COLUMNS FROM $this->tableName";
+        $res = $this->PDO->prepare($getMetaStmt);
+        if (QueryRunner::execute($res)) {
+            $result = $res->fetchAll(PDO::FETCH_COLUMN,0);
+        }
+        return $result;
+    }
 }

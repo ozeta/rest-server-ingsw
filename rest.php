@@ -4,6 +4,7 @@ namespace ingsw10;
 
 include_once "settings.php";
 
+include_once "./logic/readingRest.php";
 include_once "./logic/WaterMeterRest.php";
 include_once "./logic/ParameterRest.php";
 include_once "./logic/EmployeeRest.php";
@@ -14,6 +15,7 @@ include_once "./model/DAO/ParametersTableDAO.php";
 include_once "./model/DAO/CustomerDAO.php";
 include_once "./model/DAO/EmployeeDAO.php";
 include_once "./model/DAO/WaterMeterDAO.php";
+include_once "./model/DAO/readingDAO.php";
 
 /**
  * empty response
@@ -24,7 +26,8 @@ $response = ['code' => 400, 'body' => null];
  * associates the service to the relative Array
  */
 $service = [
-    "watermeter" => new WaterMeterRest(new WaterMeterDAO(DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "watermeter")),
+    "watermeter" => new WaterMeterRest(new WaterMeterDAO(DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "watermeter", "reading", "legal", "physical")),
+    "reading" => new readingRest(new readingDAO(DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "reading", "employee", "legal", "physical")),
     "employee" => new EmployeeRest(new EmployeeDAO(DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "employee")),
     "customer" => new CustomerRest(new CustomerDAO(DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "legal", "physical")),
     "parameters" => new ParameterRest(new ParametersTableDAO(DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "parameters"))

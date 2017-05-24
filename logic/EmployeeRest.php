@@ -51,7 +51,7 @@ class EmployeeRest
     private function search($queryUrl)
     {
         $response = null;
-        $res = $this->dao->searchLegal($queryUrl);
+        $res = $this->dao->search($queryUrl);
         if ($res == false) {
             $response = new Response(404);
         } else {
@@ -153,6 +153,8 @@ class EmployeeRest
 
             if ($tokens[1] == "configure") {
                 return $this->autoConfigure();
+            } else if ($tokens[1] == "table") {
+                return $this->getMeta();
             } elseif ($tokens[1] == "drop") {
                 return $this->drop();
             } elseif ($tokens[1] == "max") {
@@ -175,5 +177,15 @@ class EmployeeRest
         }
         return $response;
     }
-
+    private function getMeta()
+    {
+        $response = null;
+        $res = $this->dao->getMeta();
+        if ($res == false) {
+            $response = new Response(404);
+        } else {
+            $response = new Response(200, json_encode($res, JSON_NUMERIC_CHECK));
+        }
+        return $response;
+    }
 }
