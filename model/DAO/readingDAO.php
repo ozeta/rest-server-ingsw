@@ -118,11 +118,7 @@ class readingDAO extends DAO
             ;
             ";
 
-        $this->selectStmt = /** @lang mysql */
-            "SELECT *
-            FROM $tableName
-             WHERE id = :id;
-            ";
+
         $this->querySql = /** @lang mysql */
             "SELECT * FROM $tableName ";
 
@@ -223,7 +219,7 @@ class readingDAO extends DAO
     public function dropTable($DBuser)
     {
         if ($DBuser != $this->dbUsername) {
-            return false;
+            return null;
         }
         $res = $this->PDO->prepare($this->dropTableStmt);
         return QueryRunner::execute($res);
@@ -231,13 +227,13 @@ class readingDAO extends DAO
 
     public function delete($ID)
     {
-        if (!$this->get($ID)) return false;
+        if (!$this->get($ID)) return null;
         $res = $this->PDO->prepare($this->deleteStmt);
         $res->bindParam(':id', $ID, PDO::PARAM_INT);
         if (QueryRunner::execute($res)) {
             if ($res->rowCount() == 1) return true;
         }
-        return false;
+        return null;
     }
 
 }

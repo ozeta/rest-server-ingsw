@@ -13,115 +13,63 @@ class readingRest
 {
 
     private $name = "reading";
-    private $dao;
-    private $functionArray;
+    private $readingDao;
+    private $employeeDao;
+    private $customerDao;
+    private $watermeterDao;
+
+
+    /**
+     * readingRest constructor.
+     * @param $readingDao
+     * @param $employeeDao
+     * @param $customerDao
+     * @param $watermeterDao
+     */
+    public function __construct($readingDao, $employeeDao, $customerDao, $watermeterDao)
+    {
+        $this->readingDao = $readingDao;
+        $this->employeeDao = $employeeDao;
+        $this->customerDao = $customerDao;
+        $this->watermeterDao = $watermeterDao;
+    }
 
     /**
      * StubRestAPI constructor.
      * @param string $name
      */
-    public function __construct($dao)
-    {
-        $this->dao = $dao;
-    }
 
     private function autoConfigure()
     {
-        $res = $this->dao->autoConfigure();
-        if ($res == false) {
+        $res = $this->readingDao->autoConfigure();
+        if ($res == null) {
             $response = new Response(404);
         } else {
-            $response = new Response(200, json_encode($res, JSON_NUMERIC_CHECK));
+            $response = new Response(200, json_encode($res, JSON_PRETTY_PRINT));
         }
         return $response;
     }
 
     private function autoConstraint()
     {
-        $res = $this->dao->addConstraint();
-        if ($res == false) {
+        $res = $this->readingDao->addConstraint();
+        if ($res == null) {
             $response = new Response(404);
         } else {
-            $response = new Response(200, json_encode($res, JSON_NUMERIC_CHECK));
+            $response = new Response(200, json_encode($res, JSON_PRETTY_PRINT));
         }
         return $response;
     }
 
-    private function create($request)
-    {
-        $response = null;
-        $customerArray = json_decode($request->getAttachedJson(), true);
-        $res = $this->dao->create($customerArray);
-        if ($res != null) {
-            $response = new Response(201, $res);
-        } else {
-            $response = new Response(400);
-        }
-        return $response;
-
-    }
-
-    private function update($request, $id)
-    {
-        $response = null;
-        $customerArray = json_decode($request->getAttachedJson(), true);
-        $res = $this->dao->update($customerArray, $id);
-        if ($res != null) {
-            $response = new Response(201);
-        } else {
-            $response = new Response(400);
-        }
-        return $response;
-
-    }
-
-    private function get($id)
-    {
-        $response = null;
-        $res = $this->dao->get($id);
-        if ($res == false) {
-            $response = new Response(404);
-        } else {
-            $response = new Response(200, json_encode($res, JSON_NUMERIC_CHECK));
-        }
-        return $response;
-    }
-
-    private function maxID()
-    {
-        $response = null;
-        $res = $this->dao->getMaxID();
-        if ($res == false) {
-            $response = new Response(404);
-        } else {
-            $response = new Response(200, json_encode($res, JSON_NUMERIC_CHECK));
-        }
-        return $response;
-
-    }
-
-    private function drop()
-    {
-        $response = null;
-
-        $res = $this->dao->dropTable(DBUSER);
-        if ($res == false) {
-            $response = new Response(404);
-        } else {
-            $response = new Response(200, json_encode($res, JSON_NUMERIC_CHECK));
-        }
-        return $response;
-
-    }
 
     private function getAll($id)
     {
         $response = null;
-        $res = $this->dao->getAllLegal($id);
-        if ($res == false) {
+        $res = $this->readingDao->getAllLegal($id);
+        if ($res == null) {
             $response = new Response(404);
         } else {
-            $response = new Response(200, json_encode($res, JSON_NUMERIC_CHECK));
+            $response = new Response(200, json_encode($res, JSON_PRETTY_PRINT));
         }
         return $response;
     }
@@ -129,41 +77,41 @@ class readingRest
 
     public function parseRequest($request)
     {
+        $res = null;
         $response = null;
         $tokens = $request->getUriTokens();
+        if ($request->getAttachedJson() != null) {
+            $resourceArray = json_decode($request->getAttachedJson(), true);
+        }
+
         $id = $tokens[1];
         if ($tokens[0] == $this->name) {
             if ($tokens[1] == "create") {
-                return $this->autoConfigure();
+                $res = $this->readingDao->create($resourceArray);
             } else if ($tokens[1] == "constraint") {
                 return $this->autoConstraint();
             } elseif ($tokens[1] == "drop") {
-                return $this->drop();
+                $res = $this->readingDao->dropTable(DBUSER);
             } elseif ($tokens[1] == "table") {
-                return $this->getMeta();
+                $res = $this->readingDao->getMeta();
             } elseif (is_numeric($id)) {
                 if ($request->getRequestMethod() == 'GET') {
-                    return $this->get($id);
-                }  elseif ($request->getRequestMethod() == 'PUT') {
-                    return $this->update($request, $id);
+                    $res = $this->readingDao->get($id, $this->employeeDao, $this->customerDao, $this->watermeterDao);
+                } elseif ($request->getRequestMethod() == 'PUT') {
+                    $res = $this->readingDao->update($resourceArray, $id);
+
                 }
             } elseif ($request->getRequestMethod() == 'POST') {
                 return $this->create($request);
             }
         }
-        return $response;
-    }
-
-    private function getMeta()
-    {
-        $response = null;
-        $res = $this->dao->getMeta();
-        if ($res == false) {
+        if ($res == null) {
             $response = new Response(404);
         } else {
-            $response = new Response(200, json_encode($res, JSON_NUMERIC_CHECK));
+            $response = new Response(200, json_encode($res, JSON_PRETTY_PRINT));
         }
         return $response;
     }
+
 
 }

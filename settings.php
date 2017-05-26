@@ -36,6 +36,7 @@ define("DBUSER", "root");
 define("DBPASSWORD", "");
 define("VERBOSE", true);
 define("NONVERBOSE", false);
+
 */
 /*
 function __autoload($class_name) {

@@ -45,8 +45,8 @@ class EmployeeDAO
             #stringa caratteristica mysql
             $this->PDO = new PDO("mysql:host=$dbHost", $username, $password);
             #imposta quanti errori mostrare in caso di eccezione
-            $this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-           // $this->PDO->setAttribute(PDO::ATTR_STATEMENT_CLASS, array("EPDOStatement\EPDOStatement", array($this->PDO)));
+            // $this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $this->PDO->setAttribute(PDO::ATTR_STATEMENT_CLASS, array("EPDOStatement\EPDOStatement", array($this->PDO)));
 
         } catch (PDOException $e) {
             error_log($e->getMessage() . "\n\n", 3, "./server-errors.log");
@@ -71,7 +71,7 @@ class EmployeeDAO
             city          varchar(255) NOT NULL, 
             prov          varchar(255) NOT NULL, 
             street        varchar(255) NOT NULL, 
-            streetnumber  varchar(255) NOT NULL, 
+            street_number  varchar(255) NOT NULL, 
             phone         varchar(255) NOT NULL, 
             cap           varchar(255) NOT NULL, 
             PRIMARY KEY (id));
@@ -79,8 +79,8 @@ class EmployeeDAO
 
         $this->insertStmt = /** @lang mysql */
             "INSERT INTO $tableName
-                    ( role,  username,  password,  firstname,  lastname,  birthdate,  hiredate,  email,  cf,  city,  prov,  street,  streetnumber,  phone,  cap) 
-            VALUES ( :role, :username, :password, :firstname, :lastname, :birthdate, :hiredate, :email, :cf, :city, :prov, :street, :streetnumber, :phone, :cap)
+                    ( role,  username,  password,  firstname,  lastname,  birthdate,  hiredate,  email,  cf,  city,  prov,  street,  street_number,  phone,  cap) 
+            VALUES ( :role, :username, :password, :firstname, :lastname, :birthdate, :hiredate, :email, :cf, :city, :prov, :street, :street_number, :phone, :cap)
             ;";
         $this->updateStmt = /** @lang mysql */
             "UPDATE $tableName SET
@@ -96,7 +96,7 @@ class EmployeeDAO
             city = :city, 
             prov = :prov, 
             street = :street, 
-            streetnumber = :streetnumber, 
+            street_number = :street_number, 
             phone = :phone, 
             cap = :cap 
             WHERE
@@ -118,10 +118,16 @@ class EmployeeDAO
         $this->selectStmt = /** @lang mysql */
             //"SELECT id, email, cf, city, prov, street, street_number, phone, piva, cap
             "SELECT *
-            FROM $tableName
+            FROM $tableName 
              WHERE id = :id;
             ";
 
+        $this->selectUsernameStmt = /** @lang mysql */
+            //"SELECT id, email, cf, city, prov, street, street_number, phone, piva, cap
+            "SELECT id, username, password
+            FROM $tableName 
+            WHERE username = :username;
+            ";
         $this->querySql = "SELECT * FROM $tableName ";
 
     }
@@ -134,7 +140,6 @@ class EmployeeDAO
         if (QueryRunner::execute($res)) {
             return $this->PDO->lastInsertId('ID');
         }
-        echo $res->debugDumpParams();
         return null;
     }
 
@@ -151,7 +156,7 @@ class EmployeeDAO
         $res->bindParam(':city', $resourceArray["addr"]["city"]);
         $res->bindParam(':prov', $resourceArray["addr"]["prov"]);
         $res->bindParam(':street', $resourceArray["addr"]["street"]);
-        $res->bindParam(':streetnumber', $resourceArray["addr"]["streetNumber"]);
+        $res->bindParam(':street_number', $resourceArray["addr"]["street_number"]);
         $res->bindParam(':cap', $resourceArray["addr"]["cap"]);
         $res->bindParam(':email', $resourceArray["email"]);
         $res->bindParam(':phone', $resourceArray["phone"]);
@@ -162,8 +167,8 @@ class EmployeeDAO
 
     public function update($resourceArray, $id)
     {
-        if (!$this->get($id)) return false;
-        var_dump($resourceArray["ID"]);
+        if (!$this->get($id)) return null;
+        //var_dump($resourceArray["ID"]);
         $res = $this->PDO->prepare($this->updateStmt);
         $res = $this->bindParameters($resourceArray, $res);
 
@@ -188,10 +193,19 @@ class EmployeeDAO
         if (QueryRunner::execute($res)) {
             $result = $res->fetch(PDO::FETCH_OBJ);
         }
+        if ($result) return new Employee($result);
+        else return null;
+    }
 
-        echo var_dump($result);
-        $result->phone = "\u0020".$result->phone;
-        //$result->phone = '"'.$result->phone.'""';
+    public function getByUsername($username)
+    {
+        $res = $this->PDO->prepare($this->selectUsernameStmt);
+        //echo var_dump($res);
+        $res->bindParam(':username', $username, PDO::PARAM_INT);
+        $res->interpolateQuery();
+        if (QueryRunner::execute($res)) {
+            $result = $res->fetch(PDO::FETCH_OBJ);
+        }
         return $result;
     }
 
@@ -202,7 +216,8 @@ class EmployeeDAO
             $result = $res->fetch(PDO::FETCH_OBJ);
         }
         //echo var_dump($result);
-        return $result;
+        if ($result) return new Employee($result);
+        else return null;
     }
 
     /**
@@ -222,7 +237,7 @@ class EmployeeDAO
     function dropTable($DBuser)
     {
         if ($DBuser != $this->dbUsername) {
-            return false;
+            return null;
         }
         $res = $this->PDO->prepare($this->dropTableStmt);
         return QueryRunner::execute($res);
@@ -246,30 +261,35 @@ class EmployeeDAO
         foreach ($queryArr as $key => $value) {
             $res->bindValue($key, $value);
         }
-
         if (QueryRunner::execute($res)) {
+            $result = null;
+            $i = 0;
             $row = $res->fetchAll(PDO::FETCH_OBJ);
+            foreach ($row as $key => $value) {
+                $result[$i++] = new Employee($value);
+            }
         }
-        return $row;
+        return $result;
     }
 
     public function delete($ID)
     {
-        if (!$this->get($ID)) return false;
+        if (!$this->get($ID)) return null;
         $res = $this->PDO->prepare($this->deleteStmt);
         $res->bindParam(':id', $ID, PDO::PARAM_INT);
         if (QueryRunner::execute($res)) {
             if ($res->rowCount() == 1) return true;
         }
-        return false;
+        return null;
     }
+
     public function getMeta()
     {
         $result = null;
         $getMetaStmt = "SHOW COLUMNS FROM $this->tableName";
         $res = $this->PDO->prepare($getMetaStmt);
         if (QueryRunner::execute($res)) {
-            $result = $res->fetchAll(PDO::FETCH_COLUMN,0);
+            $result = $res->fetchAll(PDO::FETCH_COLUMN, 0);
         }
         return $result;
     }

@@ -22,6 +22,7 @@ class DAO
     protected $selectMaxId;
     protected $selectLegalStmt;
     protected $selectPhysicalStmt;
+    protected $selectStmt;
 
     protected $tableName;
 
@@ -50,19 +51,34 @@ class DAO
         } catch (PDOException $e) {
             error_log($e->getMessage() . "\n\n", 3, "./server-errors.log");
         }
+        $this->selectStmt = /** @lang mysql */
+            "SELECT *
+            FROM $tableName
+             WHERE id = :id;
+            ";
     }
 
-    /**
-     * @param $ID integer ID
-     * @return customer or false if not exists.
-     */
-    public function get($ID)
+
+    public function get($ID, $employeeDao, $customerDao, $watermeterDao)
     {
         $res = $this->PDO->prepare($this->selectStmt);
         $res->bindParam(':id', $ID, PDO::PARAM_INT);
         if (QueryRunner::execute($res)) {
-            $result = $res->fetch(PDO::FETCH_OBJ);
+            $res = $res->fetch(PDO::FETCH_OBJ);
         }
+        if ($res->id_legal != 0) {
+            $customer = $customerDao->getLegal($res->id_legal);
+        } else {
+            $customer = $customerDao->getPhysical($res->id_physical);
+        }
+        if (!$customer) return null;
+        $operator = $employeeDao->get($res->id_operator);
+        if (!$operator) return null;
+        $watermeter = $watermeterDao->get($customerDao, $res->id_operator);
+        if (!$operator) return null;
+
+        $result = new Reading($res, $customer, $operator, $watermeter);
+
         return $result;
     }
 
@@ -71,7 +87,7 @@ class DAO
         $getMetaStmt = "SHOW COLUMNS FROM $this->tableName";
         $res = $this->PDO->prepare($getMetaStmt);
         if (QueryRunner::execute($res)) {
-            $result = $res->fetchAll(PDO::FETCH_COLUMN,0);
+            $result = $res->fetchAll(PDO::FETCH_COLUMN, 0);
         }
         return $result;
     }

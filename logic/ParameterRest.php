@@ -75,7 +75,7 @@ class ParameterRest
         if ($res == false) {
             $response = new Response(404);
         } else {
-            $response = new Response(200, json_encode($res, JSON_NUMERIC_CHECK));
+            $response = new Response(200, json_encode($res));
         }
         return $response;
     }

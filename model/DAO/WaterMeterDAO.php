@@ -184,45 +184,69 @@ class WaterMeterDAO
     }
 
 
-    /**
-     * @param $ID integer ID
-     * @return customer or false if not exists.
-     */
 
-    public function get($ID)
+    public function get($customerDao, $ID)
     {
+        $result = null;
+
         $res = $this->PDO->prepare($this->selectStmt);
         $res->bindParam(':id', $ID, PDO::PARAM_INT);
         if (QueryRunner::execute($res)) {
             $result = $res->fetch(PDO::FETCH_OBJ);
         }
+        if ($result->id_legal != -1) {
+            $customer = $customerDao->getLegal($result->id_legal);
+        } else {
+            $customer = $customerDao->getPhysical($result->id_physical);
+        }
+        if (!$customer) return null;
+        $result = new Watermeter($customer, $result);
         return $result;
     }
 
-    public function getAllLegal($ID)
+    public function getAllLegal($dao, $ID)
     {
+        $result = null;
+        $customer = $dao->getLegal($ID);
+        if (!$customer) return null;
+
         $res = $this->PDO->prepare($this->selectLegalStmt);
 
         $res->bindParam(':id', $ID, PDO::PARAM_INT);
         if (QueryRunner::execute($res)) {
-            $result = $res->fetchAll(PDO::FETCH_OBJ);
+            $row = $res->fetchAll(PDO::FETCH_OBJ);
+            $i = 0;
+            foreach ($row as $key => $value) {
+                $result[$i++] = new Watermeter($customer, $value);
+            }
         }
         return $result;
     }
 
-    public function getAllPhysical($ID)
+    public function getAllPhysical($dao, $ID)
     {
+        $result = null;
+        $customer = $dao->getPhysical($ID);
+        if (!$customer) return null;
+        echo "LOL";
+
         $res = $this->PDO->prepare($this->selectPhysicalStmt);
 
         $res->bindParam(':id', $ID, PDO::PARAM_INT);
         if (QueryRunner::execute($res)) {
-            $result = $res->fetchAll(PDO::FETCH_OBJ);
+            $row = $res->fetchAll(PDO::FETCH_OBJ);
+            $i = 0;
+            foreach ($row as $key => $value) {
+                $result[$i++] = new Watermeter($customer, $value);
+            }
         }
         return $result;
     }
 
+
     public function getMaxID()
     {
+        $result = null;
         $res = $this->PDO->prepare($this->selectMaxId);
         if (QueryRunner::execute($res)) {
             $result = $res->fetch(PDO::FETCH_OBJ);
@@ -249,7 +273,7 @@ class WaterMeterDAO
     public function dropTable($DBuser)
     {
         if ($DBuser != $this->dbUsername) {
-            return false;
+            return null;
         }
         $res = $this->PDO->prepare($this->dropTableStmt);
         return QueryRunner::execute($res);
@@ -257,22 +281,35 @@ class WaterMeterDAO
 
     public function delete($ID)
     {
-        if (!$this->get($ID)) return false;
+        if (!$this->get(null, $ID)) return null;
         $res = $this->PDO->prepare($this->deleteStmt);
         $res->bindParam(':id', $ID, PDO::PARAM_INT);
         if (QueryRunner::execute($res)) {
             if ($res->rowCount() == 1) return true;
         }
-        return false;
+        return null;
     }
+
     public function getMeta()
     {
         $result = null;
         $getMetaStmt = "SHOW COLUMNS FROM $this->tableName";
         $res = $this->PDO->prepare($getMetaStmt);
         if (QueryRunner::execute($res)) {
-            $result = $res->fetchAll(PDO::FETCH_COLUMN,0);
+            $result = $res->fetchAll(PDO::FETCH_COLUMN, 0);
         }
         return $result;
+    }
+
+    public function jsonTest($dao)
+    {
+        $watermeterStdObj = $this->get($dao, 10);
+        $ownerID = -1;
+        $owner = null;
+        $customer = $dao->getLegal(12);
+
+        //$address = Address::create($res);
+        $watermeter = new Watermeter($customer, $watermeterStdObj);
+        echo json_encode($watermeter, JSON_PRETTY_PRINT);
     }
 }

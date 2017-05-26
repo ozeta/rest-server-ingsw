@@ -49,7 +49,15 @@ class CustomerDAO
 
     private $dbUsername;
     private $PDO;
+    private static $instance = null;
 
+    public static function getInstance($dbHost, $username, $password, $schema, $legalTableName, $physicalTableName)
+    {
+        if (static::$instance === null) {
+            static::$instance = new CustomerDAO($dbHost, $username, $password, $schema, $legalTableName, $physicalTableName);
+        }
+        return static::$instance;
+    }
 
     public function __construct($dbHost, $username, $password, $schema, $legalTableName, $physicalTableName)
     {
@@ -193,6 +201,15 @@ class CustomerDAO
     private function createLegal($resourceArray)
     {
         $res = $this->PDO->prepare($this->insertLegalStmt);
+        $res = $this->bindLegal($res, $resourceArray);
+        if (QueryRunner::execute($res)) {
+            return $this->PDO->lastInsertId('ID');
+        }
+        return null;
+    }
+
+    private function bindLegal($res, $resourceArray)
+    {
         $res->bindParam(':legal_name', $resourceArray["legalName"]);
         $res->bindParam(':email', $resourceArray["email"]);
         $res->bindParam(':cf', $resourceArray["cf"]["value"]);
@@ -203,26 +220,14 @@ class CustomerDAO
         $res->bindParam(':cap', $resourceArray["addr"]["cap"]);
         $res->bindParam(':phone', $resourceArray["phone"]);
         $res->bindParam(':piva', $resourceArray["PIVA"]);
-        if (QueryRunner::execute($res)) {
-            return $this->PDO->lastInsertId('ID');
-        }
-        return null;
+        return $res;
     }
 
     private function createPhysical($resourceArray)
     {
         $res = $this->PDO->prepare($this->insertPhysicalStmt);
-        $res->bindParam(':first_name', $resourceArray["firstName"]);
-        $res->bindParam(':last_name', $resourceArray["lastName"]);
-        $res->bindParam(':birthday', $resourceArray["birthDate"]);
-        $res->bindParam(':email', $resourceArray["email"]);
-        $res->bindParam(':cf', $resourceArray["cf"]["value"]);
-        $res->bindParam(':city', $resourceArray["addr"]["city"]);
-        $res->bindParam(':prov', $resourceArray["addr"]["prov"]);
-        $res->bindParam(':street', $resourceArray["addr"]["street"]);
-        $res->bindParam(':street_number', $resourceArray["addr"]["streetNumber"]);
-        $res->bindParam(':cap', $resourceArray["addr"]["cap"]);
-        $res->bindParam(':phone', $resourceArray["phone"]);
+        $res = $this->bindPhysical($res, $resourceArray);
+
         if (QueryRunner::execute($res)) {
             return $this->PDO->lastInsertId('ID');
         }
@@ -233,26 +238,15 @@ class CustomerDAO
     {
         $res = $this->PDO->prepare($this->updateLegalStmt);
         $res->bindParam(':id', $id);
-        $res->bindParam(':legal_name', $resourceArray["legalName"]);
-        $res->bindParam(':email', $resourceArray["email"]);
-        $res->bindParam(':cf', $resourceArray["cf"]["value"]);
-        $res->bindParam(':city', $resourceArray["addr"]["city"]);
-        $res->bindParam(':prov', $resourceArray["addr"]["prov"]);
-        $res->bindParam(':street', $resourceArray["addr"]["street"]);
-        $res->bindParam(':street_number', $resourceArray["addr"]["streetNumber"]);
-        $res->bindParam(':cap', $resourceArray["addr"]["cap"]);
-        $res->bindParam(':phone', $resourceArray["phone"]);
-        $res->bindParam(':piva', $resourceArray["PIVA"]);
+        $res = $this->bindLegal($res, $resourceArray);
 
         $result = QueryRunner::execute($res);
 
         return $result;
     }
 
-    private function updatePhysical($resourceArray, $id)
+    private function bindPhysical($res, $resourceArray)
     {
-        $res = $this->PDO->prepare($this->updatePhysicalStmt);
-        $res->bindParam(':id', $id);
         $res->bindParam(':firstName', $resourceArray["firstName"]);
         $res->bindParam(':lastName', $resourceArray["lastName"]);
         $res->bindParam(':birthDay', $resourceArray["lastName"]);
@@ -264,26 +258,17 @@ class CustomerDAO
         $res->bindParam(':street_number', $resourceArray["addr"]["streetNumber"]);
         $res->bindParam(':cap', $resourceArray["addr"]["cap"]);
         $res->bindParam(':phone', $resourceArray["phone"]);
+        return $res;
+    }
+
+    private function updatePhysical($resourceArray, $id)
+    {
+        $res = $this->PDO->prepare($this->updatePhysicalStmt);
+        $res->bindParam(':id', $id);
+        $res = $this->bindPhysical($res, $resourceArray);
+
 
         return QueryRunner::execute($res);
-    }
-
-    /***
-     * @param $resourceArray generic customer parsed from a json string and converted into an associative array
-     * @return null
-     */
-    public function create($resourceArray)
-    {
-        if (isset($resourceArray["PIVA"]) && !isset($resourceArray["birthDate"])) return $this->createLegal($resourceArray);
-        if (isset($resourceArray["firstName"]) && isset($resourceArray["birthDate"])) return $this->createPhysical($resourceArray);
-        return null;
-    }
-
-    public function update($resourceArray, $id)
-    {
-        if (isset($resourceArray["PIVA"]) && !isset($resourceArray["birthDate"])) return $this->updateLegal($resourceArray, $id);
-        if (isset($resourceArray["firstName"]) && isset($resourceArray["birthDate"])) return $this->updatePhysical($resourceArray, $id);
-        return null;
     }
 
     /**
@@ -299,8 +284,9 @@ class CustomerDAO
         if (QueryRunner::execute($res)) {
             $result = $res->fetch(PDO::FETCH_OBJ);
         }
-        //echo var_dump($result);
-        return $result;
+        if ($result) {
+            return new Legal($result);
+        } else return null;
     }
 
     public function getPhysical($ID)
@@ -312,7 +298,8 @@ class CustomerDAO
             $result = $res->fetch(PDO::FETCH_OBJ);
         }
         //echo var_dump($result);
-        return $result;
+        if ($result) return new Physical($result);
+        else return null;
     }
 
     public function getMaxID()
@@ -321,8 +308,8 @@ class CustomerDAO
         if (QueryRunner::execute($res)) {
             $result = $res->fetch(PDO::FETCH_OBJ);
         }
-        //echo var_dump($result);
-        return $result;
+        if ($result) return new Legal($result);
+        else return null;
     }
 
     /**
@@ -347,82 +334,85 @@ class CustomerDAO
     function dropTableLegalCustomer($DBuser)
     {
         if ($DBuser != $this->dbUsername) {
-            return false;
+            return null;
         }
         $res = $this->PDO->prepare($this->dropLegalTableStmt);
         return QueryRunner::execute($res);
     }
 
+    private function search($queryUrl, $querySql)
+    {
+        $queryArr = null;
+        $whereStmt = "";
+        $row = null;
+        parse_str($queryUrl, $queryArr);
+        foreach ($queryArr as $key => $value) {
+            $whereStmt .= "$key = :$key ";
+            if ($value != end($queryArr)) $whereStmt .= "and ";
+
+        }
+        $newQuery = "$querySql WHERE $whereStmt ORDER BY id";
+
+        $res = $this->PDO->prepare($newQuery);
+        foreach ($queryArr as $key => $value) {
+            $res->bindValue($key, $value);
+        }
+        return $res;
+    }
 
     public function searchLegal($queryUrl)
     {
-        $queryArr = null;
-        $whereStmt = "";
-        $row = null;
-        parse_str($queryUrl, $queryArr);
-        foreach ($queryArr as $key => $value) {
-            $whereStmt .= "$key = :$key ";
-            if ($value != end($queryArr)) $whereStmt .= "and ";
-
-        }
-        $newQuery = "$this->queryLegalSql WHERE $whereStmt ORDER BY id";
-
-        $res = $this->PDO->prepare($newQuery);
-        foreach ($queryArr as $key => $value) {
-            $res->bindValue($key, $value);
-        }
+        $res = $this->search($queryUrl, $this->queryLegalSql);
 
         if (QueryRunner::execute($res)) {
+            $result = null;
+            $i = 0;
             $row = $res->fetchAll(PDO::FETCH_OBJ);
+            foreach ($row as $key => $value) {
+                $result[$i++] = new Legal($value);
+            }
         }
-        return $row;
+        return $result;
     }
+
 
     public function searchPhysical($queryUrl)
     {
-        $queryArr = null;
-        $whereStmt = "";
-        $row = null;
-        parse_str($queryUrl, $queryArr);
-        foreach ($queryArr as $key => $value) {
-            $whereStmt .= "$key = :$key ";
-            if ($value != end($queryArr)) $whereStmt .= "and ";
-
-        }
-        $newQuery = "$this->queryPhysicalSql WHERE $whereStmt ORDER BY id";
-
-        $res = $this->PDO->prepare($newQuery);
-        foreach ($queryArr as $key => $value) {
-            $res->bindValue($key, $value);
-        }
+        $res = $this->search($queryUrl, $this->queryPhysicalSql);
 
         if (QueryRunner::execute($res)) {
+            $result = null;
+            $i = 0;
             $row = $res->fetchAll(PDO::FETCH_OBJ);
+            foreach ($row as $key => $value) {
+                $result[$i++] = new Physical($value);
+            }
         }
         return $row;
     }
 
     public function deleteLegal($ID)
     {
-        if (!$this->get($ID)) return false;
+        if (!$this->getLegal($ID)) return null;
         $res = $this->PDO->prepare($this->deleteLegalStmt);
         $res->bindParam(':id', $ID, PDO::PARAM_INT);
         if (QueryRunner::execute($res)) {
             if ($res->rowCount() == 1) return true;
         }
-        return false;
+        return null;
     }
 
     public function deletePhysical($ID)
     {
-        if (!$this->get($ID)) return false;
+        if (!$this->getPhysical($ID)) return null;
         $res = $this->PDO->prepare($this->deletePhysicalStmt);
         $res->bindParam(':id', $ID, PDO::PARAM_INT);
         if (QueryRunner::execute($res)) {
             if ($res->rowCount() == 1) return true;
         }
-        return false;
+        return null;
     }
+
     public function getMetaLegal($ID)
     {
         $result = null;
@@ -430,18 +420,41 @@ class CustomerDAO
         $res = $this->PDO->prepare($getMetaStmt);
         $res->bindParam(':id', $ID, PDO::PARAM_INT);
         if (QueryRunner::execute($res)) {
-            $result = $res->fetchAll(PDO::FETCH_COLUMN,0);
+            $result = $res->fetchAll(PDO::FETCH_COLUMN, 0);
         }
         return $result;
     }
+
     public function getMetaPhysical($ID)
     {
         $result = null;
         $getMetaStmt = "SHOW COLUMNS FROM $this->physicalTableN";
         $res = $this->PDO->prepare($getMetaStmt);
         if (QueryRunner::execute($res)) {
-            $result = $res->fetchAll(PDO::FETCH_COLUMN,0);
+            $result = $res->fetchAll(PDO::FETCH_COLUMN, 0);
         }
         return $result;
+    }
+
+    public function jsonTest($id)
+    {
+        $ownerID = -1;
+        $owner = null;
+        /*
+        if ($res->id_physical = !-1) {
+            $ownerID = $res->id_physical;
+            $owner = $customerDao->getLegal($ownerID);
+        } else {
+            $ownerID = $res->id_legal;
+            $owner = $customerDao->getPhysical($ownerID);
+        }*/
+        $owner = $this->getPhysical($id);
+        if ($owner) {
+            $legal = new Physical($owner);
+            // $watermeter = new Watermeter($address,$legal, 0);
+            // var_dump($watermeter);
+            echo json_encode($legal, JSON_PRETTY_PRINT);
+
+        } else echo "EMANNAGGIALCRISTO!!";
     }
 }
