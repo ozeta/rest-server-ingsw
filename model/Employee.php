@@ -31,7 +31,7 @@ class Employee implements \JsonSerializable
     private $role;
 
     private $credential;
-    private $address;
+    private $addr;
     private $birthDate;
     private $hireDate;
     private $firstName;
@@ -49,7 +49,7 @@ class Employee implements \JsonSerializable
         $this->ID = $owner->id;
         $this->role = $owner->role;
        // $this->credential = new Credential($owner);
-        $this->address = new Address($owner);
+        $this->addr = new Address($owner);
         $this->firstName = $owner->firstname;
         $this->lastName = $owner->lastname;
         $this->birthDate = $owner->birthdate;

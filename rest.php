@@ -15,7 +15,7 @@ include_once "./model/DAO/ParametersTableDAO.php";
 include_once "./model/DAO/CustomerDAO.php";
 include_once "./model/DAO/EmployeeDAO.php";
 include_once "./model/DAO/WaterMeterDAO.php";
-include_once "./model/DAO/readingDAO.php";
+include_once "./model/DAO/ReadingDAO.php";
 include_once "./model/Address.php";
 include_once "./model/Watermeter.php";
 include_once "./model/Legal.php";
@@ -29,7 +29,7 @@ include_once "./model/Reading.php";
  * associates the resource to the relative DAO
  */
 $watermeterDAO = new WaterMeterDAO(DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "watermeter", "reading", "legal", "physical");
-$readingDAO = new readingDAO(DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "reading", "employee", "legal", "physical");
+$readingDAO = new ReadingDAO(DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "reading", "employee", "legal", "physical");
 $employeeDAO = new EmployeeDAO(DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "employee");
 $customerDAO = new CustomerDAO(DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "legal", "physical");
 $parameterDAO = new ParametersTableDAO(DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "parameters");

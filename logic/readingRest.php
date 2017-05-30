@@ -86,15 +86,19 @@ class readingRest
 
         $id = $tokens[1];
         if ($tokens[0] == $this->name) {
-            if ($tokens[1] == "create") {
-                $res = $this->readingDao->create($resourceArray);
-            } else if ($tokens[1] == "constraint") {
-                return $this->autoConstraint();
-            } elseif ($tokens[1] == "drop") {
-                $res = $this->readingDao->dropTable(DBUSER);
-            } elseif ($tokens[1] == "table") {
-                $res = $this->readingDao->getMeta();
-            } elseif (is_numeric($id)) {
+
+                if ($tokens[1] == "create") {
+                    $res = $this->readingDao->create($resourceArray);
+                } else if ($tokens[1] == "constraint") {
+                    return $this->autoConstraint();
+                } elseif ($tokens[1] == "drop") {
+                    $res = $this->readingDao->dropTable(DBUSER);
+                } elseif ($tokens[1] == "table") {
+                    $res = $this->readingDao->getMeta();
+                }elseif ($tokens[1] == "operator" && is_numeric($tokens[2])) {
+                    $res = $this->readingDao->getAllByOperator($tokens[2], $this->employeeDao, $this->customerDao, $this->watermeterDao);
+                }
+             elseif (is_numeric($id)) {
                 if ($request->getRequestMethod() == 'GET') {
                     $res = $this->readingDao->get($id, $this->employeeDao, $this->customerDao, $this->watermeterDao);
                 } elseif ($request->getRequestMethod() == 'PUT') {
@@ -102,7 +106,7 @@ class readingRest
 
                 }
             } elseif ($request->getRequestMethod() == 'POST') {
-                return $this->create($request);
+                $res = $this->readingDao->create($resourceArray);
             }
         }
         if ($res == null) {

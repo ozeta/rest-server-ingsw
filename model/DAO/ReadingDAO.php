@@ -15,7 +15,7 @@ include_once "QueryRunner.php";
 include_once "DAO.php";
 require_once "EPDOStatement.php";
 
-class readingDAO extends DAO
+class ReadingDAO
 {
     protected $insertStmt;
     protected $updateStmt;
@@ -35,22 +35,30 @@ class readingDAO extends DAO
     private $getAllByIdStmt;
     private $getMetaStmt = "SHOW COLUMNS FROM :table";
 
+    protected $PDO;
+    protected $selectStmt;
+
+
     public function __construct($dbHost, $username, $password, $schema, $tableName, $employee, $legal, $physical)
     {
-        parent::__construct($dbHost, $username, $password, $schema, $tableName);
         $this->dbUsername = $username;
         $tableName = "$schema.$tableName";
         $this->tableName = $tableName;
+
         try {
             #stringa caratteristica mysql
 
             $this->PDO = new PDO ("mysql:host=$dbHost", $username, $password);
-            //$this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $this->PDO->setAttribute(PDO::ATTR_STATEMENT_CLASS, array("EPDOStatement\EPDOStatement", array($this->PDO)));
+            $this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            //$this->PDO->setAttribute(PDO::ATTR_STATEMENT_CLASS, array("EPDOStatement\EPDOStatement", array($this->PDO)));
         } catch (PDOException $e) {
             error_log($e->getMessage() . "\n\n", 3, "./server-errors.log");
         }
-
+        $this->selectStmt = /** @lang mysql */
+            "SELECT *
+            FROM $tableName
+             WHERE id = :id;
+            ";
         $this->dropTableStmt = /** @lang mysql */
             "
             ALTER TABLE $tableName DROP FOREIGN KEY FKWaterMeter828994;
@@ -122,11 +130,25 @@ class readingDAO extends DAO
         $this->querySql = /** @lang mysql */
             "SELECT * FROM $tableName ";
 
+        $this->getByOperator = /** @lang mysql */
+            "SELECT id FROM $tableName WHERE id_operator = :id";
+    }
+
+
+    public function getMeta($ID)
+    {
+        $this->getMetaStmt = str_replace(":table", $this->tableName, $this->getMetaStmt);
+        $res = $this->PDO->prepare($this->getMetaStmt);
+
+        if (QueryRunner::execute($res)) {
+            $result = $res->fetchAll(PDO::FETCH_COLUMN, 0);
+        }
+        return $result;
     }
 
     private function bindParameters($resourceArray, $res)
     {
-        $placeholder = 0;
+        $placeholder = -1;
         if ($resourceArray["legalID"] != 0) {
             //legal
             $res->bindParam(':id_legal', $resourceArray["legalID"]);
@@ -140,8 +162,7 @@ class readingDAO extends DAO
         $res->bindParam(':assignment', $resourceArray["assignment"]);
         $res->bindParam(':reading', $resourceArray["reading"]);
         $res->bindParam(':watermeter_id', $resourceArray["watermeterID"]);
-        $res->bindParam(':id_operator', $resourceArray["operatorID"]);
-
+        $res->bindParam(':id_operator', $resourceArray["operator"]["ID"]);
         return $res;
     }
 
@@ -151,6 +172,7 @@ class readingDAO extends DAO
      */
     public function create($resourceArray)
     {
+
         $res = $this->PDO->prepare($this->insertStmt);
         $res = $this->bindParameters($resourceArray, $res);
         if (QueryRunner::execute($res)) {
@@ -166,7 +188,6 @@ class readingDAO extends DAO
         $res->bindValue(':id', $id);
         return QueryRunner::execute($res);
     }
-
 
 
     public function getAllLegal($ID)
@@ -236,4 +257,41 @@ class readingDAO extends DAO
         return null;
     }
 
+    public function get($ID, $employeeDao, $customerDao, $watermeterDao)
+    {
+        $res = $this->PDO->prepare($this->selectStmt);
+        $res->bindParam(':id', $ID, PDO::PARAM_INT);
+        if (QueryRunner::execute($res)) {
+            $res = $res->fetch(PDO::FETCH_OBJ);
+        }
+        if ($res->id_legal != 0) {
+            $customer = $customerDao->getLegal($res->id_legal);
+        } else {
+            $customer = $customerDao->getPhysical($res->id_physical);
+        }
+        if (!$customer) return null;
+        $operator = $employeeDao->get($res->id_operator);
+        if (!$operator) return null;
+        $watermeter = $watermeterDao->get($customerDao, $res->watermeter_id);
+        if (!$operator) return null;
+
+        $result = new Reading($res, $customer, $operator, $watermeter);
+
+        return $result;
+    }
+
+    public function getAllByOperator($ID, $employeeDao, $customerDao, $watermeterDao)
+    {
+        $res = $this->PDO->prepare($this->getByOperator);
+        $res->bindParam(':id', $ID, PDO::PARAM_INT);
+        if (QueryRunner::execute($res)) {
+            $res = $res->fetchAll(PDO::FETCH_ASSOC);
+        }
+        //var_dump($res);
+        $i = 0;
+        foreach ($res as $key => $value) {
+            $row[$i++] = $this->get($value["id"], $employeeDao, $customerDao, $watermeterDao);
+        }
+        return $row;
+    }
 }
