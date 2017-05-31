@@ -18,7 +18,7 @@ require_once "EPDOStatement.php";
 class ReadingDAO
 {
     protected $insertStmt;
-    protected $updateStmt;
+    protected $updateValueStmt;
     protected $deleteStmt;
     protected $selectMaxId;
     protected $selectLegalStmt;
@@ -38,6 +38,7 @@ class ReadingDAO
     protected $PDO;
     protected $selectStmt;
 
+    private $placeholder = -1;
 
     public function __construct($dbHost, $username, $password, $schema, $tableName, $employee, $legal, $physical)
     {
@@ -70,7 +71,7 @@ class ReadingDAO
             "CREATE SCHEMA IF NOT EXISTS $schema ;
             create table IF NOT EXISTS $tableName (
             id            int(11) NOT NULL AUTO_INCREMENT, 
-            value         double NOT NULL, 
+            value         double, 
             assignment    date , 
             reading       date , 
             id_operator   int(11) NOT NULL, 
@@ -103,16 +104,10 @@ class ReadingDAO
             :id_legal, 
             :id_physical);
             ";
-        $this->updateStmt = /** @lang mysql */
+        $this->updateValueStmt = /** @lang mysql */
             "UPDATE $tableName SET 
-            value = :value, 
-            assignment = :assignment, 
-            reading = :reading, 
-            id_operator = :id_operator, 
-            watermeter_id = :watermeter_id, 
-            id_legal = :id_legal, 
-            id_physical = :id_physical
-            WHERE id = :id;
+            value = :value
+            WHERE id = :id AND id_operator = :operator;
             ";
 
         $this->deleteStmt = /** @lang mysql */
@@ -131,7 +126,7 @@ class ReadingDAO
             "SELECT * FROM $tableName ";
 
         $this->getByOperator = /** @lang mysql */
-            "SELECT id FROM $tableName WHERE id_operator = :id";
+            "SELECT id FROM $tableName r WHERE id_operator = :id AND r.reading IS NULL";
     }
 
 
@@ -148,15 +143,14 @@ class ReadingDAO
 
     private function bindParameters($resourceArray, $res)
     {
-        $placeholder = -1;
         if ($resourceArray["legalID"] != 0) {
             //legal
             $res->bindParam(':id_legal', $resourceArray["legalID"]);
-            $res->bindParam(':id_physical', $placeholder);
+            $res->bindParam(':id_physical', $this->placeholder);
         } else {
             //physical
             $res->bindParam(':id_physical', $resourceArray["physicalID"]);
-            $res->bindParam(':id_legal', $placeholder);
+            $res->bindParam(':id_legal', $this->placeholder);
         }
         $res->bindParam(':value', $resourceArray["value"]);
         $res->bindParam(':assignment', $resourceArray["assignment"]);
@@ -181,11 +175,12 @@ class ReadingDAO
         return null;
     }
 
-    public function update($resourceArray, $id)
+    public function updateValue($id, $opID, $value)
     {
-        $res = $this->PDO->prepare($this->updateStmt);
-        $res = $this->bindParameters($resourceArray, $res);
+        $res = $this->PDO->prepare($this->updateValueStmt);
+        $res->bindParam(':value', $value);
         $res->bindValue(':id', $id);
+        $res->bindValue(':operator', $opID);
         return QueryRunner::execute($res);
     }
 
@@ -208,15 +203,6 @@ class ReadingDAO
         $res->bindParam(':id', $ID, PDO::PARAM_INT);
         if (QueryRunner::execute($res)) {
             $result = $res->fetchAll(PDO::FETCH_OBJ);
-        }
-        return $result;
-    }
-
-    public function getMaxID()
-    {
-        $res = $this->PDO->prepare($this->selectMaxId);
-        if (QueryRunner::execute($res)) {
-            $result = $res->fetch(PDO::FETCH_OBJ);
         }
         return $result;
     }
@@ -264,7 +250,7 @@ class ReadingDAO
         if (QueryRunner::execute($res)) {
             $res = $res->fetch(PDO::FETCH_OBJ);
         }
-        if ($res->id_legal != 0) {
+        if ($res->id_legal != $this->placeholder) {
             $customer = $customerDao->getLegal($res->id_legal);
         } else {
             $customer = $customerDao->getPhysical($res->id_physical);
@@ -287,7 +273,7 @@ class ReadingDAO
         if (QueryRunner::execute($res)) {
             $res = $res->fetchAll(PDO::FETCH_ASSOC);
         }
-        //var_dump($res);
+        var_dump($res);
         $i = 0;
         foreach ($res as $key => $value) {
             $row[$i++] = $this->get($value["id"], $employeeDao, $customerDao, $watermeterDao);

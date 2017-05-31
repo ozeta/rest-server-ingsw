@@ -84,26 +84,28 @@ class readingRest
             $resourceArray = json_decode($request->getAttachedJson(), true);
         }
 
-        $id = $tokens[1];
+        $readID = $tokens[1];
         if ($tokens[0] == $this->name) {
 
-                if ($tokens[1] == "create") {
-                    $res = $this->readingDao->create($resourceArray);
-                } else if ($tokens[1] == "constraint") {
-                    return $this->autoConstraint();
-                } elseif ($tokens[1] == "drop") {
-                    $res = $this->readingDao->dropTable(DBUSER);
-                } elseif ($tokens[1] == "table") {
-                    $res = $this->readingDao->getMeta();
-                }elseif ($tokens[1] == "operator" && is_numeric($tokens[2])) {
-                    $res = $this->readingDao->getAllByOperator($tokens[2], $this->employeeDao, $this->customerDao, $this->watermeterDao);
-                }
-             elseif (is_numeric($id)) {
+            if ($tokens[1] == "create") {
+                $res = $this->readingDao->create($resourceArray);
+            } else if ($tokens[1] == "constraint") {
+                return $this->autoConstraint();
+            } elseif ($tokens[1] == "drop") {
+                $res = $this->readingDao->dropTable(DBUSER);
+            } elseif ($tokens[1] == "table") {
+                $res = $this->readingDao->getMeta();
+            } elseif ($tokens[1] == "operator" && is_numeric($tokens[2])) {
+                $res = $this->readingDao->getAllByOperator($tokens[2], $this->employeeDao, $this->customerDao, $this->watermeterDao);
+            } elseif (is_numeric($readID)) {
                 if ($request->getRequestMethod() == 'GET') {
-                    $res = $this->readingDao->get($id, $this->employeeDao, $this->customerDao, $this->watermeterDao);
+                    $res = $this->readingDao->get($readID, $this->employeeDao, $this->customerDao, $this->watermeterDao);
                 } elseif ($request->getRequestMethod() == 'PUT') {
-                    $res = $this->readingDao->update($resourceArray, $id);
-
+                    if (is_numeric($tokens[2]) && is_numeric($tokens[3])) {
+                        $opID = $tokens[2];
+                        $value = $tokens[3];
+                        $res = $this->readingDao->updateValue($readID, $opID, $value);
+                    }
                 }
             } elseif ($request->getRequestMethod() == 'POST') {
                 $res = $this->readingDao->create($resourceArray);

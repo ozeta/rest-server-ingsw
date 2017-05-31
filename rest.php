@@ -25,6 +25,14 @@ include_once "./model/Employee.php";
 include_once "./model/Customer.php";
 include_once "./model/Reading.php";
 
+//checks ssl request
+if(isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https'){
+
+} else {
+    echo "SSL TUNNELLING REQUIRED";
+    $response = new Response("404");
+    $response->reply();
+    exit(0);}
 /**
  * associates the resource to the relative DAO
  */
@@ -40,6 +48,9 @@ $service = [
     "parameters" => new ParameterRest($parameterDAO),
     "reading" => new readingRest($readingDAO, $employeeDAO, $customerDAO,  $watermeterDAO)
 ];
+
+
+
 
 /*
  * splits the url after server's name

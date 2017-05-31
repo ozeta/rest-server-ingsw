@@ -1,11 +1,27 @@
 
 # # av:php5-engine
 #AddHandler av-php56 .php
+AddHandler av-php56 .php
+# This checks to make sure the connection is not already HTTPS
+RewriteCond %{HTTPS} !=on
+# This rule will redirect all users who are using any part of /secure/ to the same location but using HTTPS.
+# i.e.  http://www.example.com/secure/ to https://www.example.com/secure/
+# This means if you dont want to force HTTPS for all directories you can force it for a specific sub-section of the site.
+RewriteRule ^/(.*) https://%{SERVER_NAME}/$1 [R,L]
 
-	
-RewriteEngine On 
+RewriteEngine On
+
+#RewriteCond %{HTTP:X-FORWARDED-FOR} ^$
+#RewriteRule ^(.*)$ https://softengunina10.altervista.org [R=301,L]
+
 
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^(.*)$ %{ENV:BASE}\restapi.php [QSA,L]
 RewriteRule ^(.*)$ %{ENV:BASE}\rest.php [QSA,L]
 RewriteRule .* - [env=HTTP_AUTHORIZATION:%{HTTP:Authorization},last]
+
+
+# # av:php5-engine
+
+
+
