@@ -106,10 +106,10 @@ class ReadingDAO
             ";
         $this->updateValueStmt = /** @lang mysql */
             "UPDATE $tableName SET 
-            value = :value
-            WHERE id = :id AND id_operator = :operator;
+            value = :value,
+            reading = DATE(NOW())
+            WHERE id = :id AND id_operator = :operator AND value IS NULL
             ";
-
         $this->deleteStmt = /** @lang mysql */
             "DELETE FROM $tableName 
             WHERE id = :id;
@@ -126,7 +126,7 @@ class ReadingDAO
             "SELECT * FROM $tableName ";
 
         $this->getByOperator = /** @lang mysql */
-            "SELECT id FROM $tableName r WHERE id_operator = :id AND r.reading IS NULL";
+            "SELECT id FROM $tableName r WHERE id_operator = :id AND r.reading IS NULL ORDER BY id ASC";
     }
 
 
@@ -181,6 +181,8 @@ class ReadingDAO
         $res->bindParam(':value', $value);
         $res->bindValue(':id', $id);
         $res->bindValue(':operator', $opID);
+        // echo $res->interpolateQuery();
+
         return QueryRunner::execute($res);
     }
 
@@ -243,6 +245,13 @@ class ReadingDAO
         return null;
     }
 
+    public function flush()
+    {
+        $flush = "UPDATE `my_softengunina10`.`reading` SET value = NULL, reading = NULL";
+        $res = $this->PDO->prepare($flush);
+        return QueryRunner::execute($res);
+    }
+
     public function get($ID, $employeeDao, $customerDao, $watermeterDao)
     {
         $res = $this->PDO->prepare($this->selectStmt);
@@ -273,11 +282,23 @@ class ReadingDAO
         if (QueryRunner::execute($res)) {
             $res = $res->fetchAll(PDO::FETCH_ASSOC);
         }
-        var_dump($res);
         $i = 0;
+        //echo "res " . count($res). "<br>";
+        //var_dump($res);
+        //echo "\n<br>";
         foreach ($res as $key => $value) {
-            $row[$i++] = $this->get($value["id"], $employeeDao, $customerDao, $watermeterDao);
+                  //echo "key: $key value: ".$value["id"]."\n ";
+                    $row[$i++] = $this->get($value["id"], $employeeDao, $customerDao, $watermeterDao);
+            if ($key != null) {
+                {
+                }
+
+                // var_dump($row);
+            }
         }
+     //   echo "\nrow " . count($row). "<br>";
+      //  echo "\ni " . $i;
+       // return null;
         return $row;
     }
 }

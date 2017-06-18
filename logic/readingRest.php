@@ -90,7 +90,9 @@ class readingRest
             if ($tokens[1] == "create") {
                 $res = $this->readingDao->create($resourceArray);
             } else if ($tokens[1] == "constraint") {
-                return $this->autoConstraint();
+                $res = $this->autoConstraint();
+            } else if ($tokens[1] == "flush") {
+                $res = $this->readingDao->flush();
             } elseif ($tokens[1] == "drop") {
                 $res = $this->readingDao->dropTable(DBUSER);
             } elseif ($tokens[1] == "table") {
@@ -111,7 +113,7 @@ class readingRest
                 $res = $this->readingDao->create($resourceArray);
             }
         }
-        if ($res == null) {
+        if ($res == null || (isset($res) && $res == false)) {
             $response = new Response(404);
         } else {
             $response = new Response(200, json_encode($res, JSON_PRETTY_PRINT));

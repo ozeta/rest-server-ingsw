@@ -86,6 +86,7 @@ $request = new Request($_SERVER['REQUEST_METHOD'], file_get_contents('php://inpu
  *  */
 if (isset($service[$uriEntity])) {
     $response = $service[$uriEntity]->parseRequest($request);
+
     if ($response != null) {
         $response->reply();
     }
