@@ -34,6 +34,9 @@ class CustomerDAO
 
     private $selectLegalMaxId;
 
+    private $getLegalByCF;
+    private $getLegalByPIVA;
+    private $getPhysicalByCF;
 
     private $queryLegalSql;
     private $queryPhysicalSql;
@@ -46,7 +49,6 @@ class CustomerDAO
 
     private $dropLegalTableStmt;
     private $dropPhysicalTableStmt;
-
     private $dbUsername;
     private $PDO;
     private static $instance = null;
@@ -188,7 +190,21 @@ class CustomerDAO
             FROM $physicalTableName 
             WHERE id = :id;
             ";
-
+        $getLegalByCF = /** @lang mysql */
+            "SELECT *
+            FROM $legalTableName
+             WHERE cf = :cf;
+            ";
+        $getLegalByPIVA = /** @lang mysql */
+            "SELECT *
+            FROM $legalTableName
+             WHERE piva = :piva;
+            ";
+        $getPhysicalByCF = /** @lang mysql */
+            "SELECT *
+            FROM $physicalTableName
+            WHERE cf = :cf;
+            ";
         $this->queryLegalSql = "SELECT * FROM $legalTableName ";
         $this->queryPhysicalSql = "SELECT * FROM $physicalTableName";
 
@@ -198,8 +214,15 @@ class CustomerDAO
      * @param $resourceArray legal customer parsed in Associative array
      * @return int succeeded, returns last customer id. if fails, returns null
      */
-    private function createLegal($resourceArray)
+    public function createLegal($resourceArray)
     {
+        if ($this->getLegalByCF($resourceArray["cf"]["value"]) != null){
+            return -1;
+        }
+        if ($this->getLegalByPIVA($resourceArray["PIVA"]["value"]) != null){
+            return -2;
+        }
+
         $res = $this->PDO->prepare($this->insertLegalStmt);
         $res = $this->bindLegal($res, $resourceArray);
         if (QueryRunner::execute($res)) {
@@ -223,8 +246,15 @@ class CustomerDAO
         return $res;
     }
 
-    private function createPhysical($resourceArray)
+    public function createPhysical($resourceArray)
     {
+
+        if ($this->getPhysicalByCF($resourceArray["cf"]["value"]) != null){
+            return -1;
+        }
+
+
+
         $res = $this->PDO->prepare($this->insertPhysicalStmt);
         $res = $this->bindPhysical($res, $resourceArray);
 
@@ -234,7 +264,7 @@ class CustomerDAO
         return null;
     }
 
-    private function updateLegal($resourceArray, $id)
+    public function updateLegal($resourceArray, $id)
     {
         $res = $this->PDO->prepare($this->updateLegalStmt);
         $res->bindParam(':id', $id);
@@ -261,7 +291,7 @@ class CustomerDAO
         return $res;
     }
 
-    private function updatePhysical($resourceArray, $id)
+    public function updatePhysical($resourceArray, $id)
     {
         $res = $this->PDO->prepare($this->updatePhysicalStmt);
         $res->bindParam(':id', $id);
@@ -289,6 +319,30 @@ class CustomerDAO
         } else return null;
     }
 
+    public function getLegalByCF($CF)
+    {
+        $res = $this->PDO->prepare($this->getLegalByCF);
+        //echo var_dump($res);
+        $res->bindParam(':cf', $CF, PDO::PARAM_INT);
+        if (QueryRunner::execute($res)) {
+            $result = $res->fetch(PDO::FETCH_OBJ);
+        }
+        if ($result) {
+            return new Legal($result);
+        } else return null;
+    }
+    public function getLegalByPIVA($PIVA)
+    {
+        $res = $this->PDO->prepare($this->getLegalByPIVA);
+        //echo var_dump($res);
+        $res->bindParam(':piva', $PIVA, PDO::PARAM_INT);
+        if (QueryRunner::execute($res)) {
+            $result = $res->fetch(PDO::FETCH_OBJ);
+        }
+        if ($result) {
+            return new Legal($result);
+        } else return null;
+    }
     public function getPhysical($ID)
     {
         $res = $this->PDO->prepare($this->selectPhysicalStmt);
@@ -301,7 +355,18 @@ class CustomerDAO
         if ($result) return new Physical($result);
         else return null;
     }
-
+    public function getPhysicalByCF($CF)
+    {
+        $res = $this->PDO->prepare($this->getPhysicalByCF);
+        //echo var_dump($res);
+        $res->bindParam(':cf', $CF, PDO::PARAM_INT);
+        if (QueryRunner::execute($res)) {
+            $result = $res->fetch(PDO::FETCH_OBJ);
+        }
+        if ($result) {
+            return new Legal($result);
+        } else return null;
+    }
     public function getMaxID()
     {
         $res = $this->PDO->prepare($this->selectLegalMaxId);

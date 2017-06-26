@@ -55,8 +55,10 @@ class EmployeeRest
                 //SEARCH
                 $res = $this->dao->search($tokens[1]);
             } elseif ($request->getRequestMethod() == 'POST') {
+                if ($resourceArray == null){
+                    return new Response(404, "I'm expecting a Json array");
+                }
                 $res = $this->dao->create($resourceArray);
-
             }
         }
         if ($res == null) {

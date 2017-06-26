@@ -29,13 +29,24 @@ class Response
         $this->content_type = $content_type;
     }
 
+    function encrypt($message, $initialVector, $secretKey) {
+        return base64_encode(
+            mcrypt_encrypt(
+                MCRYPT_RIJNDAEL_128,
+                md5($secretKey),
+                $message,
+                MCRYPT_MODE_CFB,
+                $initialVector
+            )
+        );
+    }
     public function reply()
     {
         $json_type = "Content-Type: application/json";
         $html_type = "Content-Type:text/html";
 
         if (!is_numeric($this->http_response_code)) throw new \RuntimeException("(!) Warning! Response code must be a number");
-        if ($this->http_response_code >= 400 && isset($body)) throw new \RuntimeException("(!) Warning! body must be empty for response code " . $this->http_response_code . ".");
+        //if ($this->http_response_code >= 400 && isset($body)) throw new \RuntimeException("(!) Warning! body must be empty for response code " . $this->http_response_code . ".");
         if ($this->content_type == "json") {
             header($json_type);
         } else if ($this->content_type == "html") {

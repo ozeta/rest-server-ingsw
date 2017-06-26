@@ -45,8 +45,8 @@ class EmployeeDAO
             #stringa caratteristica mysql
             $this->PDO = new PDO("mysql:host=$dbHost", $username, $password);
             #imposta quanti errori mostrare in caso di eccezione
-            // $this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $this->PDO->setAttribute(PDO::ATTR_STATEMENT_CLASS, array("EPDOStatement\EPDOStatement", array($this->PDO)));
+             $this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            //$this->PDO->setAttribute(PDO::ATTR_STATEMENT_CLASS, array("EPDOStatement\EPDOStatement", array($this->PDO)));
 
         } catch (PDOException $e) {
             error_log($e->getMessage() . "\n\n", 3, "./server-errors.log");
@@ -146,7 +146,6 @@ class EmployeeDAO
 
     private function bindParameters($resourceArray, $res)
     {
-
         $res->bindParam(':firstname', $resourceArray["firstName"]);
         $res->bindParam(':lastname', $resourceArray["lastName"]);
         $res->bindParam(':role', $resourceArray["role"]);
@@ -156,7 +155,7 @@ class EmployeeDAO
         $res->bindParam(':city', $resourceArray["addr"]["city"]);
         $res->bindParam(':prov', $resourceArray["addr"]["prov"]);
         $res->bindParam(':street', $resourceArray["addr"]["street"]);
-        $res->bindParam(':street_number', $resourceArray["addr"]["street_number"]);
+        $res->bindParam(':street_number', $resourceArray["addr"]["streetNumber"]);
         $res->bindParam(':cap', $resourceArray["addr"]["cap"]);
         $res->bindParam(':email', $resourceArray["email"]);
         $res->bindParam(':phone', $resourceArray["phone"]);
@@ -200,9 +199,8 @@ class EmployeeDAO
     public function getByUsername($username)
     {
         $res = $this->PDO->prepare($this->selectUsernameStmt);
-        //echo var_dump($res);
         $res->bindParam(':username', $username, PDO::PARAM_INT);
-        $res->interpolateQuery();
+       // $res->interpolateQuery();
         if (QueryRunner::execute($res)) {
             $result = $res->fetch(PDO::FETCH_OBJ);
         }

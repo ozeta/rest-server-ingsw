@@ -66,12 +66,18 @@ class CustomerRest
                     $res = $this->dao->getLegal($id);
                 } else if ($request->getRequestMethod() == 'PUT') {
                     $res = $this->dao->updateLegal($resourceArray, $id);
-
                 } else if ($request->getRequestMethod() == 'DELETE') {
                     $res = $this->dao->deleteLegal($id);
-                } elseif ($request->getRequestMethod() == 'POST') {
+                } elseif ($request->getRequestMethod() == 'POST'&& !isset($tokens[2])) {
                     $res = $this->dao->createLegal($resourceArray);
-
+                    if ($res != null) {
+                        if ($res == -1) {
+                            return new Response(404, "CF already exists");
+                        }
+                        if ($res == -2) {
+                            return new Response(404, "PIVA already exists");
+                        }
+                    }
                 }
             } elseif ($tokens[1] == "physical") {
                 if ($request->getRequestMethod() == 'GET' && $tokens[2] == "table") {
@@ -82,12 +88,15 @@ class CustomerRest
                     $res = $this->dao->getPhysical($id);
                 } else if ($request->getRequestMethod() == 'PUT') {
                     $res = $this->dao->updatePhysical($resourceArray, $id);
-
                 } else if ($request->getRequestMethod() == 'DELETE') {
                     $res = $this->dao->deletePhysical($id);
                 } elseif ($request->getRequestMethod() == 'POST') {
                     $res = $this->dao->createPhysical($resourceArray);
-
+                    if ($res != null) {
+                        if ($res == -1) {
+                            return new Response(404, "CF already exists");
+                        }
+                    }
                 }
             }
         }

@@ -85,8 +85,8 @@ class WaterMeterRest
         $tokens = $request->getUriTokens();
         $id = $tokens[1];
         if ($tokens[0] == $this->name) {
-            if ($tokens[1] == "legal"       && is_numeric($tokens[2]) && $request->getRequestMethod() == 'GET') {
-                $res = $this->watermeterDao->getAllLegal($this->customerDao,$tokens[2]);
+            if ($tokens[1] == "legal" && is_numeric($tokens[2]) && $request->getRequestMethod() == 'GET') {
+                $res = $this->watermeterDao->getAllLegal($this->customerDao, $tokens[2]);
             } elseif ($tokens[1] == "physical" && is_numeric($tokens[2]) && $request->getRequestMethod() == 'GET') {
                 $res = $this->watermeterDao->getAllPhysical($this->customerDao, $tokens[2]);
             } else if ($tokens[1] == "create") {
@@ -101,7 +101,7 @@ class WaterMeterRest
                 $res = $this->watermeterDao->getMeta();
             } elseif (is_numeric($id)) {
                 if ($request->getRequestMethod() == 'GET') {
-                    $res = $this->watermeterDao->get($this->customerDao,$id);
+                    $res = $this->watermeterDao->get($this->customerDao, $id);
 
                 } elseif ($request->getRequestMethod() == 'DELETE') {
                     $res = $this->watermeterDao->delete($id);
