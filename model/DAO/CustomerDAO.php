@@ -73,7 +73,8 @@ class CustomerDAO
             #stringa caratteristica mysql
             $this->PDO = new PDO("mysql:host=$dbHost", $username, $password);
             #imposta quanti errori mostrare in caso di eccezione
-            $this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            //$this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $this->PDO->setAttribute(PDO::ATTR_STATEMENT_CLASS, array("EPDOStatement\EPDOStatement", array($this->PDO)));
         } catch (PDOException $e) {
             error_log($e->getMessage() . "\n\n", 3, "./server-errors.log");
         }
@@ -127,7 +128,7 @@ class CustomerDAO
         $this->insertPhysicalStmt = /** @lang mysql */
             "INSERT INTO $physicalTableName
                     (first_name,  last_name,  email,  phone,  birthday,  cf,  city,  prov,  street,  street_number,  cap) 
-            VALUES (:first_name, :last_name, :email, :phone, :birthday, :cf, :city, :prov, :street, :street_number, :cap);
+            VALUES (:firstname, :lastname, :email, :phone, :birthday, :cf, :city, :prov, :street, :street_number, :cap);
             ";
         $this->updateLegalStmt = /** @lang mysql */
             "UPDATE $legalTableName SET 
@@ -147,8 +148,8 @@ class CustomerDAO
 
         $this->updatePhysicalStmt = /** @lang mysql */
             "UPDATE $physicalTableName SET 
-            first_name = :first_name, 
-            last_name = :last_name, 
+            first_name = :firstname, 
+            last_name = :lastname, 
             email = :email, 
             birthday = :birthday, 
             cf = :cf, 
@@ -216,10 +217,10 @@ class CustomerDAO
      */
     public function createLegal($resourceArray)
     {
-        if ($this->getLegalByCF($resourceArray["cf"]["value"]) != null){
+        if ($this->getLegalByCF($resourceArray["cf"]["value"]) != null) {
             return -1;
         }
-        if ($this->getLegalByPIVA($resourceArray["PIVA"]["value"]) != null){
+        if ($this->getLegalByPIVA($resourceArray["PIVA"]["value"]) != null) {
             return -2;
         }
 
@@ -249,15 +250,14 @@ class CustomerDAO
     public function createPhysical($resourceArray)
     {
 
-        if ($this->getPhysicalByCF($resourceArray["cf"]["value"]) != null){
+        if ($this->getPhysicalByCF($resourceArray["cf"]["value"]) != null) {
             return -1;
         }
 
 
-
         $res = $this->PDO->prepare($this->insertPhysicalStmt);
         $res = $this->bindPhysical($res, $resourceArray);
-
+        echo $res->interpolateQuery();
         if (QueryRunner::execute($res)) {
             return $this->PDO->lastInsertId('ID');
         }
@@ -277,9 +277,9 @@ class CustomerDAO
 
     private function bindPhysical($res, $resourceArray)
     {
-        $res->bindParam(':firstName', $resourceArray["firstName"]);
-        $res->bindParam(':lastName', $resourceArray["lastName"]);
-        $res->bindParam(':birthDay', $resourceArray["lastName"]);
+        $res->bindParam(':firstname', $resourceArray["firstName"]);
+        $res->bindParam(':lastname', $resourceArray["lastName"]);
+        $res->bindParam(':birthday', $resourceArray["birthDate"]);
         $res->bindParam(':email', $resourceArray["email"]);
         $res->bindParam(':cf', $resourceArray["cf"]["value"]);
         $res->bindParam(':city', $resourceArray["addr"]["city"]);
@@ -296,8 +296,7 @@ class CustomerDAO
         $res = $this->PDO->prepare($this->updatePhysicalStmt);
         $res->bindParam(':id', $id);
         $res = $this->bindPhysical($res, $resourceArray);
-
-
+        //echo $res->interpolateQuery();
         return QueryRunner::execute($res);
     }
 
@@ -331,6 +330,7 @@ class CustomerDAO
             return new Legal($result);
         } else return null;
     }
+
     public function getLegalByPIVA($PIVA)
     {
         $res = $this->PDO->prepare($this->getLegalByPIVA);
@@ -343,6 +343,7 @@ class CustomerDAO
             return new Legal($result);
         } else return null;
     }
+
     public function getPhysical($ID)
     {
         $res = $this->PDO->prepare($this->selectPhysicalStmt);
@@ -355,6 +356,7 @@ class CustomerDAO
         if ($result) return new Physical($result);
         else return null;
     }
+
     public function getPhysicalByCF($CF)
     {
         $res = $this->PDO->prepare($this->getPhysicalByCF);
@@ -367,6 +369,7 @@ class CustomerDAO
             return new Legal($result);
         } else return null;
     }
+
     public function getMaxID()
     {
         $res = $this->PDO->prepare($this->selectLegalMaxId);

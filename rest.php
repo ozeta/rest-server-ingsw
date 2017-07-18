@@ -4,6 +4,7 @@ namespace ingsw10;
 
 include_once "settings.php";
 
+include_once "./logic/timeRest.php";
 include_once "./logic/readingRest.php";
 include_once "./logic/WaterMeterRest.php";
 include_once "./logic/ParameterRest.php";
@@ -46,7 +47,8 @@ $service = [
     "employee" => new EmployeeRest($employeeDAO),
     "customer" => new CustomerRest($customerDAO),
     "parameters" => new ParameterRest($parameterDAO),
-    "reading" => new readingRest($readingDAO, $employeeDAO, $customerDAO,  $watermeterDAO)
+    "reading" => new readingRest($readingDAO, $employeeDAO, $customerDAO,  $watermeterDAO),
+    "time" => new TimeRest()
 ];
 
 

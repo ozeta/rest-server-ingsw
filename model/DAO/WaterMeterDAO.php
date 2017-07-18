@@ -75,27 +75,23 @@ class WaterMeterDAO
             ";
 
         $this->addConstraintStmt = /** @lang mysql */
-            "ALTER TABLE $tableName ADD INDEX FKWatermeter681382 (id), ADD CONSTRAINT FKWatermeter681382 FOREIGN KEY (id) REFERENCES $reading (id);
-            ALTER TABLE $tableName ADD INDEX FKWatermeter123385 (id_legal), ADD CONSTRAINT FKWatermeter123385 FOREIGN KEY (id_legal) REFERENCES $legal (id);
-            ALTER TABLE $tableName ADD INDEX FKWatermeter426653 (id_physical), ADD CONSTRAINT FKWatermeter426653 FOREIGN KEY (id_physical) REFERENCES $physical (id);";
+            "ALTER TABLE $tableName ADD INDEX FKreading (id), ADD CONSTRAINT FKreading FOREIGN KEY (id) REFERENCES $reading (id);
+            ALTER TABLE $tableName ADD INDEX FKlegal(id_legal), ADD CONSTRAINT FKlegal FOREIGN KEY (id_legal) REFERENCES $legal (id);
+            ALTER TABLE $tableName ADD INDEX FKphysical (id_physical), ADD CONSTRAINT FKphysical FOREIGN KEY (id_physical) REFERENCES $physical (id);";
         $this->insertStmt = /** @lang mysql */
             "INSERT INTO $tableName
             (
-            value, 
-            assignment, 
-            reading, 
-            id_operator, 
-            watermeter_id, 
-            id_legal, 
-            id_physical) 
+            city, prov, street, street_number, cap, id_legal, id_physical) 
             VALUES 
-            (:value, 
-            :assignment, 
-            :reading, 
-            :id_operator, 
-            :watermeter_id, 
+            (
+            :city, 
+            :prov, 
+            :street, 
+            :street_number, 
+            :cap, 
             :id_legal, 
-            :id_physical);";
+            :id_physical
+            );";
         $this->selectLegalStmt = /** @lang mysql */
             "SELECT *
             FROM $tableName
@@ -149,7 +145,7 @@ class WaterMeterDAO
             $res->bindParam(':id_physical', $placeholder);
         } else {
             //physical
-            $res->bindParam(':id_physical', $resourceArray["legal"]["id"]);
+            $res->bindParam(':id_physical', $resourceArray["owner"]["id"]);
             $res->bindParam(':id_legal', $placeholder);
         }
         $res->bindParam(':city', $resourceArray["location"]["city"]);
@@ -168,6 +164,7 @@ class WaterMeterDAO
     {
         $res = $this->PDO->prepare($this->insertStmt);
         $res = $this->bindParameters($resourceArray, $res);
+        //echo $res->interpolateQuery();
 
         if (QueryRunner::execute($res)) {
             return $this->PDO->lastInsertId('ID');
@@ -180,7 +177,11 @@ class WaterMeterDAO
         $res = $this->PDO->prepare($this->updateStmt);
         $res = $this->bindParameters($resourceArray, $res);
         $res->bindValue(':id', $id);
-        return QueryRunner::execute($res);
+        //echo $res->interpolateQuery();
+        if (QueryRunner::execute($res)) {
+            return $id;
+        }
+        return null;
     }
 
 
@@ -213,6 +214,7 @@ class WaterMeterDAO
         $res = $this->PDO->prepare($this->selectLegalStmt);
 
         $res->bindParam(':id', $ID, PDO::PARAM_INT);
+        //echo $res->interpolateQuery();
         if (QueryRunner::execute($res)) {
             $row = $res->fetchAll(PDO::FETCH_OBJ);
             $i = 0;
@@ -228,11 +230,12 @@ class WaterMeterDAO
         $result = null;
         $customer = $dao->getPhysical($ID);
         if (!$customer) return null;
-        echo "LOL";
 
         $res = $this->PDO->prepare($this->selectPhysicalStmt);
 
         $res->bindParam(':id', $ID, PDO::PARAM_INT);
+        //echo $res->interpolateQuery();
+
         if (QueryRunner::execute($res)) {
             $row = $res->fetchAll(PDO::FETCH_OBJ);
             $i = 0;
@@ -281,10 +284,10 @@ class WaterMeterDAO
 
     public function delete($ID)
     {
-        if (!$this->get(null, $ID)) return null;
         $res = $this->PDO->prepare($this->deleteStmt);
         $res->bindParam(':id', $ID, PDO::PARAM_INT);
-        if (QueryRunner::execute($res)) {
+        //echo $res->interpolateQuery();
+         if (QueryRunner::execute($res)) {
             if ($res->rowCount() == 1) return true;
         }
         return null;

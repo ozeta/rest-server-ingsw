@@ -40,6 +40,10 @@ class Response
             )
         );
     }
+    function isJson($str) {
+        $json = json_decode($str);
+        return $json && $str != $json;
+    }
     public function reply()
     {
         $json_type = "Content-Type: application/json";
@@ -47,7 +51,7 @@ class Response
 
         if (!is_numeric($this->http_response_code)) throw new \RuntimeException("(!) Warning! Response code must be a number");
         //if ($this->http_response_code >= 400 && isset($body)) throw new \RuntimeException("(!) Warning! body must be empty for response code " . $this->http_response_code . ".");
-        if ($this->content_type == "json") {
+        if ($this->isJson($this->body)) {
             header($json_type);
         } else if ($this->content_type == "html") {
             header($html_type);
