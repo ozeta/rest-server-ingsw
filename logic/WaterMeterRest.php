@@ -50,34 +50,6 @@ class WaterMeterRest
         return $response;
     }
 
-    private function create($request)
-    {
-        $response = null;
-        $customerArray = json_decode($request->getAttachedJson(), true);
-        $res = $this->watermeterDao->create($customerArray);
-        if ($res != null) {
-            $response = new Response(201, $res);
-        } else {
-            $response = new Response(400);
-        }
-        return $response;
-
-    }
-
-    private function update($request, $id)
-    {
-        $response = null;
-        $customerArray = json_decode($request->getAttachedJson(), true);
-        $res = $this->watermeterDao->update($customerArray, $id);
-        if ($res != null) {
-            $response = new Response(201);
-        } else {
-            $response = new Response(400);
-        }
-        return $response;
-
-    }
-
 
     public function parseRequest($request, $res)
     {
@@ -102,14 +74,17 @@ class WaterMeterRest
             } elseif (is_numeric($id)) {
                 if ($request->getRequestMethod() == 'GET') {
                     $res = $this->watermeterDao->get($this->customerDao, $id);
-
                 } elseif ($request->getRequestMethod() == 'DELETE') {
                     $res = $this->watermeterDao->delete($id);
                 } elseif ($request->getRequestMethod() == 'PUT') {
-                    return $this->update($request, $id);
+                    $resArray = json_decode($request->getAttachedJson(), true);
+                    $res = $this->watermeterDao->update($resArray, $id);
                 }
             } elseif ($request->getRequestMethod() == 'POST') {
-                return $this->create($request);
+                if ($request->getAttachedJson() != null) {
+                    $resArray = json_decode($request->getAttachedJson(), true);
+                    $res = $this->watermeterDao->create($resArray);
+                }
             }
         }
         if ($res == null) {

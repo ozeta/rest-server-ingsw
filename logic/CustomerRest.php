@@ -90,7 +90,8 @@ class CustomerRest
                     $res = $this->dao->updatePhysical($resourceArray, $id);
                 } else if ($request->getRequestMethod() == 'DELETE') {
                     $res = $this->dao->deletePhysical($id);
-                } elseif ($request->getRequestMethod() == 'POST') {
+                } elseif ($request->getRequestMethod() == 'POST'&& !isset($tokens[2])) {
+                    //var_dump($resourceArray);
                     $res = $this->dao->createPhysical($resourceArray);
                     if ($res != null) {
                         if ($res == -1) {

@@ -9,7 +9,6 @@
 namespace ingsw10;
 
 include_once "Customer.php";
-
 class Physical extends Customer implements \JsonSerializable
 {
     protected $firstName;

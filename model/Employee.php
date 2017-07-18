@@ -30,7 +30,7 @@ class Employee implements \JsonSerializable
     private $ID;
     private $role;
 
-    private $credential;
+    private $cred;
     private $addr;
     private $birthDate;
     private $hireDate;
