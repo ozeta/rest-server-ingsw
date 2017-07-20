@@ -42,5 +42,10 @@ define("NONVERBOSE", false);
 function __autoload($class_name) {
     require_once $class_name . '.php';
 }
+
+
+public class Settings{
+    public $DBHOST = "localhost";
+}
 */
 ?>

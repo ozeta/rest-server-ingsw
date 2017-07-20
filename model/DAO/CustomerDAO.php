@@ -257,7 +257,7 @@ class CustomerDAO
 
         $res = $this->PDO->prepare($this->insertPhysicalStmt);
         $res = $this->bindPhysical($res, $resourceArray);
-        echo $res->interpolateQuery();
+        //echo $res->interpolateQuery();
         if (QueryRunner::execute($res)) {
             return $this->PDO->lastInsertId('ID');
         }
