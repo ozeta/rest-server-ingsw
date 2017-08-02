@@ -9,7 +9,7 @@
 namespace ingsw10;
 
 
-class ParameterRest
+class ParameterRest implements RestInterface
 {
 
     private $name = "parameters";

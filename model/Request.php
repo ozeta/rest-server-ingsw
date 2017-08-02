@@ -15,17 +15,19 @@ class Request
     private $requestMethod;
     private $attachedJson;
     private $uriTokens;
+    private $headers;
     /**
      * Request constructor.
      * @param mixed $REQUEST_METHOD
      * @param bool|string $file_get_contents
      * @param array $uriTokens
      */
-    public function __construct($requestMethod, $attachedJson, $uriTokens)
+    public function __construct($requestMethod, $attachedJson, $uriTokens, $headers)
     {
         $this->uriTokens = $uriTokens;
         $this->attachedJson = $attachedJson;
         $this->requestMethod = $requestMethod;
+        $this->headers = $headers;
     }
 
     /**
@@ -58,6 +60,13 @@ class Request
     public function setAttachedJson($attachedJson)
     {
         $this->attachedJson = $attachedJson;
+    }
+    /**
+     * @return array
+     */
+    public function getHeaders()
+    {
+        return $this->headers;
     }
 
     /**

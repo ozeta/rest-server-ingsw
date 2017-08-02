@@ -11,6 +11,18 @@ namespace ingsw10;
 class Credential implements \JsonSerializable
 {
     private $username;
+
+    /**
+     * @return mixed
+     */
+    public function getUsername()
+    {
+        return $this->username;
+    }
+    public function getPassword()
+    {
+        return $this->password;
+    }
     private $password;
 
     public function __construct($owner)
@@ -20,7 +32,7 @@ class Credential implements \JsonSerializable
     }
     function jsonSerialize()
     {
-        return get_object_vars($this);
+        return ['username' => $this->username, 'password' => null];
 
     }
 }
@@ -28,6 +40,23 @@ class Credential implements \JsonSerializable
 class Employee implements \JsonSerializable
 {
     private $ID;
+
+    /**
+     * @return mixed
+     */
+    public function getId()
+    {
+        return $this->ID;
+    }
+    public function getUsername()
+    {
+        return $this->cred->getUsername();
+    }
+    public function getPassword()
+    {
+        return $this->cred->getPassword();
+    }
+
     private $role;
 
     private $cred;
@@ -48,7 +77,7 @@ class Employee implements \JsonSerializable
     {
         $this->ID = $owner->id;
         $this->role = $owner->role;
-       // $this->credential = new Credential($owner);
+        $this->cred = new Credential($owner);
         $this->addr = new Address($owner);
         $this->firstName = $owner->firstname;
         $this->lastName = $owner->lastname;

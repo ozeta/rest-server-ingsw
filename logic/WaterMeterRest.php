@@ -9,7 +9,7 @@
 namespace ingsw10;
 
 
-class WaterMeterRest
+class WaterMeterRest implements RestInterface
 {
 
     private $name = "watermeter";
@@ -51,7 +51,7 @@ class WaterMeterRest
     }
 
 
-    public function parseRequest($request, $res)
+    public function parseRequest($request)
     {
         $response = null;
         $tokens = $request->getUriTokens();
@@ -90,7 +90,12 @@ class WaterMeterRest
         if ($res == null) {
             $response = new Response(404);
         } else {
-            $response = new Response(200, json_encode($res, JSON_PRETTY_PRINT));
+            if (is_numeric($res)){
+                $response = new Response(200, $res);
+            } else {
+                $response = new Response(200, json_encode($res, JSON_PRETTY_PRINT));
+
+            }
         }
         return $response;
     }

@@ -23,6 +23,8 @@ class EmployeeDAO
     private $deleteStmt;
     private $selectStmt;
     private $selectMaxId;
+    private $getByCF;
+    private $getByUsername;
 
 
     private $querySql;
@@ -45,8 +47,8 @@ class EmployeeDAO
             #stringa caratteristica mysql
             $this->PDO = new PDO("mysql:host=$dbHost", $username, $password);
             #imposta quanti errori mostrare in caso di eccezione
-             $this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            //$this->PDO->setAttribute(PDO::ATTR_STATEMENT_CLASS, array("EPDOStatement\EPDOStatement", array($this->PDO)));
+            //$this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $this->PDO->setAttribute(PDO::ATTR_STATEMENT_CLASS, array("EPDOStatement\EPDOStatement", array($this->PDO)));
 
         } catch (PDOException $e) {
             error_log($e->getMessage() . "\n\n", 3, "./server-errors.log");
@@ -82,6 +84,26 @@ class EmployeeDAO
                     ( role,  username,  password,  firstname,  lastname,  birthdate,  hiredate,  email,  cf,  city,  prov,  street,  street_number,  phone,  cap) 
             VALUES ( :role, :username, :password, :firstname, :lastname, :birthdate, :hiredate, :email, :cf, :city, :prov, :street, :street_number, :phone, :cap)
             ;";
+
+        $this->updateWOoutCredentialsStmt = /** @lang mysql */
+            "UPDATE $tableName SET
+            firstname = :firstname, 
+            lastname = :lastname, 
+            role = :role, 
+            birthdate = :birthdate, 
+            hiredate = :hiredate, 
+            email = :email, 
+            cf = :cf, 
+            city = :city, 
+            prov = :prov, 
+            street = :street, 
+            street_number = :street_number, 
+            phone = :phone, 
+            cap = :cap 
+            WHERE
+            $tableName.id = :id;
+            ";
+
         $this->updateStmt = /** @lang mysql */
             "UPDATE $tableName SET
             firstname = :firstname, 
@@ -124,16 +146,61 @@ class EmployeeDAO
 
         $this->selectUsernameStmt = /** @lang mysql */
             //"SELECT id, email, cf, city, prov, street, street_number, phone, piva, cap
-            "SELECT id, username, password
+            "SELECT *
             FROM $tableName 
             WHERE username = :username;
             ";
-        $this->querySql = "SELECT * FROM $tableName ";
+        $this->querySql = /** @lang mysql */
+            "SELECT * FROM $tableName ";
+
+        $this->getByCF = /** @lang mysql */
+            "SELECT *
+            FROM $tableName
+            WHERE cf = :cf;
+            ";
 
     }
 
+    /**
+     * @param $CF
+     * @return Employee|null
+     */
+    public function getByCF($CF)
+    {
+        $res = $this->PDO->prepare($this->getByCF);
+        //echo var_dump($res);
+        $res->bindParam(':cf', $CF, PDO::PARAM_INT);
+        if (QueryRunner::execute($res)) {
+            $result = $res->fetch(PDO::FETCH_OBJ);
+        }
+        return result;
+    }
+
+    public function getEmpByCF($CF)
+    {
+        $res = $this->PDO->prepare($this->getByCF);
+        //echo var_dump($res);
+        $res->bindParam(':cf', $CF, PDO::PARAM_INT);
+        if (QueryRunner::execute($res)) {
+            $result = $res->fetch(PDO::FETCH_OBJ);
+        }
+        if ($result) {
+            return new Employee($result);
+        } else return null;
+    }
+
+    /**
+     * @param $resourceArray
+     * @return int|null|string
+     */
     public function create($resourceArray)
     {
+        if ($this->getByCF($resourceArray["cf"]["value"]) != null) {
+            return -1;
+        }
+        if ($this->getByUsername($resourceArray["cred"]["username"]) != null) {
+            return -2;
+        }
         $res = $this->PDO->prepare($this->insertStmt);
         $res = $this->bindParameters($resourceArray, $res);
 
@@ -143,15 +210,27 @@ class EmployeeDAO
         return null;
     }
 
-
+    /**
+     * @param $resourceArray
+     * @param $res
+     * @return mixed
+     */
     private function bindParameters($resourceArray, $res)
     {
+        if ($resourceArray == null) {
+            echo "resourcearray is null";
+            return 0;
+        }
         $res->bindParam(':firstname', $resourceArray["firstName"]);
         $res->bindParam(':lastname', $resourceArray["lastName"]);
         $res->bindParam(':role', $resourceArray["role"]);
         $res->bindParam(':cf', $resourceArray["cf"]["value"]);
-        $res->bindParam(':username', $resourceArray["cred"]["username"]);
-        $res->bindParam(':password', $resourceArray["cred"]["password"]);
+        if ($resourceArray["cred"]["username"] != null) {
+            $res->bindParam(':username', $resourceArray["cred"]["username"]);
+        }
+        if ($resourceArray["cred"]["password"] != null) {
+            $res->bindParam(':password', $this->hash($resourceArray["cred"]["password"]));
+        }
         $res->bindParam(':city', $resourceArray["addr"]["city"]);
         $res->bindParam(':prov', $resourceArray["addr"]["prov"]);
         $res->bindParam(':street', $resourceArray["addr"]["street"]);
@@ -164,26 +243,43 @@ class EmployeeDAO
         return $res;
     }
 
+    /**
+     * @param $resourceArray
+     * @param $id
+     * @return int|mixed|null
+     */
     public function update($resourceArray, $id)
     {
         if (!$this->get($id)) return null;
-        //var_dump($resourceArray["ID"]);
-        $res = $this->PDO->prepare($this->updateStmt);
-        $res = $this->bindParameters($resourceArray, $res);
+        $test = $this->getEmpByCF($resourceArray["cf"]["value"]);
+        if ($test && $test->getId() != $resourceArray["ID"]) {
+            echo $test->getId() . "!=" . $resourceArray["ID"];
+            return -1;
+        }
 
+        $test = $this->getByUsername($resourceArray["cred"]["username"]);
+        if ($test->getUsername() != $resourceArray["cred"]["username"]) {
+            return -2;
+        }
+        if ($resourceArray["cred"]["password"] == null) {
+            $res = $this->PDO->prepare($this->updateWOoutCredentialsStmt);
+        } else {
+            $res = $this->PDO->prepare($this->updateStmt);
+        }
+        $res = $this->bindParameters($resourceArray, $res);
         $res->bindValue(':id', $id);
+        //  echo $res->interpolateQuery();
+
 
         $result = QueryRunner::execute($res);
 
         return $result;
     }
 
-
     /**
-     * @param $ID integer ID
-     * @return customer or false if not exists.
+     * @param $ID
+     * @return Employee|null
      */
-
     public function get($ID)
     {
         $res = $this->PDO->prepare($this->selectStmt);
@@ -192,21 +288,90 @@ class EmployeeDAO
         if (QueryRunner::execute($res)) {
             $result = $res->fetch(PDO::FETCH_OBJ);
         }
-        if ($result) return new Employee($result);
-        else return null;
+        if ($result) {
+            return new Employee($result);
+
+        }
+
+        return null;
     }
 
+    /**
+     * @param $username
+     * @return Employee|null
+     */
     public function getByUsername($username)
     {
         $res = $this->PDO->prepare($this->selectUsernameStmt);
         $res->bindParam(':username', $username, PDO::PARAM_INT);
-       // $res->interpolateQuery();
+        // $res->interpolateQuery();
         if (QueryRunner::execute($res)) {
             $result = $res->fetch(PDO::FETCH_OBJ);
+            return new Employee($result);
         }
-        return $result;
+        return null;
     }
 
+    /**
+     * @param $clear_password
+     * @return bool|string
+     */
+    private function hash($clear_password)
+    {
+        return password_hash($clear_password, PASSWORD_BCRYPT);
+    }
+
+    /**
+     * @param $clear_password
+     * @param $hashed_password
+     * @return bool
+     */
+    private function verify($clear_password, $hashed_password)
+    {
+        return password_verify($clear_password, $hashed_password);
+        // return hash_equals ( $clear_password, $hashed_password);
+    }
+
+    /**
+     * @param $queryUrl
+     * @return customer|mixed|null
+     */
+    public function getLogin($queryUrl)
+    {
+        $queryArr = null;
+        parse_str($queryUrl, $queryArr);
+
+        $result = $this->getByUsername($queryArr['username']);
+
+        if ($this->verify($queryArr['password'], $result->password)) {
+            $result = $this->get($result->id);
+            return $result;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * @param $user
+     * @param $password
+     * @return Employee|mixed|null
+     */
+    public function login($user, $password)
+    {
+
+        $result = $this->getByUsername($user);
+
+        if ($result != null && $this->verify($password, $result->getPassword())) {
+            $result = $this->get($result->getId());
+            return $result;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * @return Employee|null
+     */
     public function getMaxID()
     {
         $res = $this->PDO->prepare($this->selectMaxId);
@@ -241,7 +406,10 @@ class EmployeeDAO
         return QueryRunner::execute($res);
     }
 
-
+    /**
+     * @param $queryUrl
+     * @return null
+     */
     public function search($queryUrl)
     {
         $queryArr = null;
@@ -270,6 +438,10 @@ class EmployeeDAO
         return $result;
     }
 
+    /**
+     * @param $ID
+     * @return bool|null
+     */
     public function delete($ID)
     {
         if (!$this->get($ID)) return null;
@@ -281,6 +453,9 @@ class EmployeeDAO
         return null;
     }
 
+    /**
+     * @return array|null
+     */
     public function getMeta()
     {
         $result = null;

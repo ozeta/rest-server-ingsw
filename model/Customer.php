@@ -12,6 +12,42 @@ namespace ingsw10;
 class Customer implements \JsonSerializable
 {
     protected $id;
+
+    /**
+     * @return mixed
+     */
+    public function getId()
+    {
+        return $this->id;
+    }
+
+    /**
+     * @param mixed $id
+     * @return Customer
+     */
+    public function setId($id)
+    {
+        $this->id = $id;
+        return $this;
+    }
+
+    /**
+     * @return CF
+     */
+    public function getCf()
+    {
+        return $this->cf;
+    }
+
+    /**
+     * @param CF $cf
+     * @return Customer
+     */
+    public function setCf($cf)
+    {
+        $this->cf = $cf;
+        return $this;
+    }
     protected $addr;
     protected $email;
     protected $phone;

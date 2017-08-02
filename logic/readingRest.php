@@ -9,7 +9,7 @@
 namespace ingsw10;
 
 
-class readingRest
+class readingRest implements RestInterface
 {
 
     private $name = "reading";

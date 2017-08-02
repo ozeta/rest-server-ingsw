@@ -5,10 +5,12 @@ namespace ingsw10;
 include_once "settings.php";
 
 include_once "./logic/timeRest.php";
+include_once "./logic/RestInterface.php";
 include_once "./logic/readingRest.php";
 include_once "./logic/WaterMeterRest.php";
 include_once "./logic/ParameterRest.php";
 include_once "./logic/EmployeeRest.php";
+include_once "./logic/AuthRest.php";
 include_once "./logic/CustomerRest.php";
 include_once "./model/Request.php";
 include_once "./model/Response.php";
@@ -52,9 +54,13 @@ class Rest
     }
 
     private function parse_request(){
+        /**
+         * get headers from request
+         */
+        $headers = getallheaders();
 
         /*
-         * splits the url after server's name
+         * split the url after server's name
          * */
         $uri = "$_SERVER[REQUEST_URI]";
         $uri = rtrim($uri, '/');
@@ -81,12 +87,13 @@ class Rest
         /**
          * puts a client's input into a Request Object
          */
-        $this->request = new Request($_SERVER['REQUEST_METHOD'], file_get_contents('php://input'), $uriTokens);
+        $this->request = new Request($_SERVER['REQUEST_METHOD'], file_get_contents('php://input'), $uriTokens, $headers);
     }
+
+    /**
+     * launchs the service, if exists into the serviceArray
+     *  */
     public function execute_request(){
-        /**
-         * launchs the serviceArray, if exists into the Array
-         *  */
         if (isset($this->serviceArray[$this->uriEntity])) {
             $response = $this->serviceArray[$this->uriEntity]->parseRequest($this->request);
 
@@ -105,18 +112,24 @@ class Rest
 /**
  * associates the resource to the relative DAO
  */
-$watermeterDAO = new WaterMeterDAO(DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "watermeter", "reading", "legal", "physical");
-$readingDAO = new ReadingDAO(DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "reading", "employee", "legal", "physical");
-$employeeDAO = new EmployeeDAO(DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "employee");
-$customerDAO = new CustomerDAO(DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "legal", "physical");
-$parameterDAO = new ParametersTableDAO(DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "parameters");
+$watermeterDAO  = new WaterMeterDAO         (DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "watermeter", "reading", "legal", "physical");
+$readingDAO     = new ReadingDAO            (DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "reading", "employee", "legal", "physical");
+$employeeDAO    = new EmployeeDAO           (DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "employee");
+$customerDAO    = new CustomerDAO           (DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "legal", "physical");
+$parameterDAO   = new ParametersTableDAO    (DBHOST, DBUSER, DBPASSWORD, USERSCHEMA, "parameters");
+
+$apikeys = [
+    "ec457d0a974c48d5685a7efa03d137dc8bbde7e3" => 1
+];
+
 $serviceArray = [
     "watermeter" => new WaterMeterRest($watermeterDAO, $customerDAO),
     "employee" => new EmployeeRest($employeeDAO),
     "customer" => new CustomerRest($customerDAO),
     "parameters" => new ParameterRest($parameterDAO),
     "reading" => new readingRest($readingDAO, $employeeDAO, $customerDAO, $watermeterDAO),
-    "time" => new TimeRest()
+    "time" => new TimeRest(),
+    "auth" => new AuthRest($employeeDAO,$apikeys)
 ];
 
 

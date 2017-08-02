@@ -8,7 +8,7 @@
 
 namespace ingsw10;
 
-class CustomerRest
+class CustomerRest implements RestInterface
 {
 
     private $name = "customer";
@@ -64,18 +64,30 @@ class CustomerRest
                     $res = $this->dao->searchLegal($tokens[2]);
                 } else if ($request->getRequestMethod() == 'GET') {
                     $res = $this->dao->getLegal($id);
-                } else if ($request->getRequestMethod() == 'PUT') {
+                } else if ($request->getRequestMethod() == 'PUT' && is_numeric($id)) {
+
                     $res = $this->dao->updateLegal($resourceArray, $id);
+                    if ($res != null) {
+                        if ($res === -1) {
+                            var_dump($res);
+                            return new Response(420, "CF associated on other user");
+                        } else if ($res === -2) {
+                            var_dump($res);
+                            return new Response(421, "PIVA associated on other user");
+                        }
+                    }
+
                 } else if ($request->getRequestMethod() == 'DELETE') {
                     $res = $this->dao->deleteLegal($id);
-                } elseif ($request->getRequestMethod() == 'POST'&& !isset($tokens[2])) {
+                } elseif ($request->getRequestMethod() == 'POST' && !isset($tokens[2])) {
                     $res = $this->dao->createLegal($resourceArray);
                     if ($res != null) {
                         if ($res == -1) {
-                            return new Response(404, "CF already exists");
-                        }
-                        if ($res == -2) {
-                            return new Response(404, "PIVA already exists");
+                            return new Response(420, "CF already exists");
+                        } else if ($res == -2) {
+                            return new Response(421, "PIVA already exists");
+                        } else if ($res == -3) {
+                            return new Response(421, "PIVA too long");
                         }
                     }
                 }
@@ -84,13 +96,20 @@ class CustomerRest
                     $res = $this->dao->getMetaPhysical();
                 } else if ($request->getRequestMethod() == 'GET' && !is_numeric($id)) {
                     $res = $this->dao->searchPhysical($tokens[2]);
-                } else if ($request->getRequestMethod() == 'GET') {
+                } else if ($request->getRequestMethod() == 'GET' && is_numeric($id)) {
                     $res = $this->dao->getPhysical($id);
-                } else if ($request->getRequestMethod() == 'PUT') {
+                } else if ($request->getRequestMethod() == 'PUT' && is_numeric($id)) {
                     $res = $this->dao->updatePhysical($resourceArray, $id);
-                } else if ($request->getRequestMethod() == 'DELETE') {
+                    if ($res != null) {
+                        if ($res === -1) {
+                            var_dump($res);
+                            return new Response(420, "CF associated on other user");
+                        }
+                    }
+
+                } else if ($request->getRequestMethod() == 'DELETE' && is_numeric($id)) {
                     $res = $this->dao->deletePhysical($id);
-                } elseif ($request->getRequestMethod() == 'POST'&& !isset($tokens[2])) {
+                } elseif ($request->getRequestMethod() == 'POST' && !isset($tokens[2])) {
                     //var_dump($resourceArray);
                     $res = $this->dao->createPhysical($resourceArray);
                     if ($res != null) {
@@ -104,7 +123,11 @@ class CustomerRest
         if ($res == null) {
             $response = new Response(404);
         } else {
-            $response = new Response(200, json_encode($res, JSON_PRETTY_PRINT));
+            if (is_numeric($res)) {
+                $response = new Response(200, $res);
+            } else {
+                $response = new Response(200, json_encode($res, JSON_PRETTY_PRINT));
+            }
         }
         return $response;
     }

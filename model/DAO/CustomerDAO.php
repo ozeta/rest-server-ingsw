@@ -73,8 +73,8 @@ class CustomerDAO
             #stringa caratteristica mysql
             $this->PDO = new PDO("mysql:host=$dbHost", $username, $password);
             #imposta quanti errori mostrare in caso di eccezione
-            //$this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $this->PDO->setAttribute(PDO::ATTR_STATEMENT_CLASS, array("EPDOStatement\EPDOStatement", array($this->PDO)));
+            $this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            //$this->PDO->setAttribute(PDO::ATTR_STATEMENT_CLASS, array("EPDOStatement\EPDOStatement", array($this->PDO)));
         } catch (PDOException $e) {
             error_log($e->getMessage() . "\n\n", 3, "./server-errors.log");
         }
@@ -191,17 +191,17 @@ class CustomerDAO
             FROM $physicalTableName 
             WHERE id = :id;
             ";
-        $getLegalByCF = /** @lang mysql */
+        $this->getLegalByCF = /** @lang mysql */
             "SELECT *
             FROM $legalTableName
              WHERE cf = :cf;
             ";
-        $getLegalByPIVA = /** @lang mysql */
+        $this->getLegalByPIVA = /** @lang mysql */
             "SELECT *
             FROM $legalTableName
              WHERE piva = :piva;
             ";
-        $getPhysicalByCF = /** @lang mysql */
+        $this->getPhysicalByCF = /** @lang mysql */
             "SELECT *
             FROM $physicalTableName
             WHERE cf = :cf;
@@ -212,26 +212,38 @@ class CustomerDAO
     }
 
     /**
-     * @param $resourceArray legal customer parsed in Associative array
-     * @return int succeeded, returns last customer id. if fails, returns null
+     * @param $resourceArray
+     * @return int|null|string
      */
     public function createLegal($resourceArray)
     {
+
         if ($this->getLegalByCF($resourceArray["cf"]["value"]) != null) {
             return -1;
         }
-        if ($this->getLegalByPIVA($resourceArray["PIVA"]["value"]) != null) {
+        if ($this->getLegalByPIVA($resourceArray["PIVA"]) != null) {
             return -2;
         }
 
+        if (strlen($resourceArray["PIVA"]) > 20) {
+            return -3;
+        }
         $res = $this->PDO->prepare($this->insertLegalStmt);
         $res = $this->bindLegal($res, $resourceArray);
+
+        //echo $res->interpolateQuery();
         if (QueryRunner::execute($res)) {
             return $this->PDO->lastInsertId('ID');
+
         }
         return null;
     }
 
+    /**
+     * @param $res
+     * @param $resourceArray
+     * @return mixed
+     */
     private function bindLegal($res, $resourceArray)
     {
         $res->bindParam(':legal_name', $resourceArray["legalName"]);
@@ -247,6 +259,10 @@ class CustomerDAO
         return $res;
     }
 
+    /**
+     * @param $resourceArray
+     * @return int|null|string
+     */
     public function createPhysical($resourceArray)
     {
 
@@ -264,8 +280,26 @@ class CustomerDAO
         return null;
     }
 
+    /**
+     * @param $resourceArray
+     * @param $id
+     * @return int|mixed
+     */
     public function updateLegal($resourceArray, $id)
     {
+        if (!$this->getLegal($id)) return null;
+        $test = $this->getLegalByCF($resourceArray["cf"]["value"]);
+        if ($test && $test->getId() != $resourceArray["id"] ) {
+            echo $test->getId()."!=".$resourceArray["id"];
+            return -1;
+        }
+        $test = $this->getLegalByPIVA($resourceArray["PIVA"]);
+        if ($test && $test->getId() != $resourceArray["id"] ) {
+            echo $test->getId()."!=".$resourceArray["id"];
+            return -2;
+        }
+
+        //echo "$test->getId(), ".$resourceArray['cf']['value'];
         $res = $this->PDO->prepare($this->updateLegalStmt);
         $res->bindParam(':id', $id);
         $res = $this->bindLegal($res, $resourceArray);
@@ -275,6 +309,11 @@ class CustomerDAO
         return $result;
     }
 
+    /**
+     * @param $res
+     * @param $resourceArray
+     * @return mixed
+     */
     private function bindPhysical($res, $resourceArray)
     {
         $res->bindParam(':firstname', $resourceArray["firstName"]);
@@ -291,8 +330,18 @@ class CustomerDAO
         return $res;
     }
 
+    /**
+     * @param $resourceArray
+     * @param $id
+     * @return mixed
+     */
     public function updatePhysical($resourceArray, $id)
     {
+        if (!$this->getPhysical($id)) return null;
+        $test = $this->getPhysicalByCF($resourceArray["cf"]["value"]);
+        if ($test && $test->getId() != $resourceArray["id"] ) {
+            return -1;
+        }
         $res = $this->PDO->prepare($this->updatePhysicalStmt);
         $res->bindParam(':id', $id);
         $res = $this->bindPhysical($res, $resourceArray);
@@ -301,10 +350,9 @@ class CustomerDAO
     }
 
     /**
-     * @param $ID integer ID
-     * @return customer or false if not exists.
+     * @param $ID
+     * @return Legal|null
      */
-
     public function getLegal($ID)
     {
         $res = $this->PDO->prepare($this->selectLegalStmt);
@@ -315,9 +363,15 @@ class CustomerDAO
         }
         if ($result) {
             return new Legal($result);
-        } else return null;
+        }
+        return null;
     }
 
+    /**
+     * @param $CF
+     * @return Legal|null
+     *
+     */
     public function getLegalByCF($CF)
     {
         $res = $this->PDO->prepare($this->getLegalByCF);
@@ -328,7 +382,17 @@ class CustomerDAO
         }
         if ($result) {
             return new Legal($result);
-        } else return null;
+        }
+        return null;
+        /*        try {
+                    $res->execute();
+                    $result = $res->fetch(PDO::FETCH_OBJ);
+                    if ($result) {
+                        return new Legal($result);
+                    }
+                } catch (PDOException $e) {
+                    return null;
+                }*/
     }
 
     public function getLegalByPIVA($PIVA)
@@ -341,7 +405,17 @@ class CustomerDAO
         }
         if ($result) {
             return new Legal($result);
-        } else return null;
+        }
+        return null;
+/*        try {
+            $res->execute();
+            $result = $res->fetch(PDO::FETCH_OBJ);
+            if ($result) {
+                return new Legal($result);
+            }
+        } catch (PDOException $e) {
+            return null;
+        }*/
     }
 
     public function getPhysical($ID)
@@ -408,6 +482,11 @@ class CustomerDAO
         return QueryRunner::execute($res);
     }
 
+    /**
+     * @param $queryUrl
+     * @param $querySql
+     * @return array of entities
+     */
     private function search($queryUrl, $querySql)
     {
         $queryArr = null;
@@ -428,6 +507,10 @@ class CustomerDAO
         return $res;
     }
 
+    /**
+     * @param $queryUrl
+     * @return null
+     */
     public function searchLegal($queryUrl)
     {
         $res = $this->search($queryUrl, $this->queryLegalSql);
@@ -443,7 +526,10 @@ class CustomerDAO
         return $result;
     }
 
-
+    /**
+     * @param $queryUrl
+     * @return null
+     */
     public function searchPhysical($queryUrl)
     {
         $res = $this->search($queryUrl, $this->queryPhysicalSql);
@@ -459,6 +545,10 @@ class CustomerDAO
         return $result;
     }
 
+    /**
+     * @param $ID
+     * @return bool|null
+     */
     public function deleteLegal($ID)
     {
         if (!$this->getLegal($ID)) return null;
@@ -470,6 +560,10 @@ class CustomerDAO
         return null;
     }
 
+    /**
+     * @param $ID
+     * @return bool|null
+     */
     public function deletePhysical($ID)
     {
         if (!$this->getPhysical($ID)) return null;
@@ -481,6 +575,10 @@ class CustomerDAO
         return null;
     }
 
+    /**
+     * @param $ID
+     * @return array|null
+     */
     public function getMetaLegal($ID)
     {
         $result = null;
@@ -493,6 +591,10 @@ class CustomerDAO
         return $result;
     }
 
+    /**
+     * @param $ID
+     * @return array|null
+     */
     public function getMetaPhysical($ID)
     {
         $result = null;
@@ -504,6 +606,9 @@ class CustomerDAO
         return $result;
     }
 
+    /**
+     * @param $id
+     */
     public function jsonTest($id)
     {
         $ownerID = -1;

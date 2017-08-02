@@ -14,6 +14,10 @@ use PDOException;
 include_once "QueryRunner.php";
 require_once "EPDOStatement.php";
 
+/**
+ * Class WaterMeterDAO
+ * @package ingsw10
+ */
 class WaterMeterDAO
 {
 
@@ -136,6 +140,27 @@ class WaterMeterDAO
 
     }
 
+    /**
+     * @param $custArray legal customer parsed in Associative array
+     * @return int succeeded, returns last customer id. if fails, returns null
+     */
+    public function create($resourceArray)
+    {
+        $res = $this->PDO->prepare($this->insertStmt);
+        $res = $this->bindParameters($resourceArray, $res);
+        //echo $res->interpolateQuery();
+
+        if (QueryRunner::execute($res)) {
+            return $this->PDO->lastInsertId('ID');
+        }
+        return null;
+    }
+
+    /**
+     * @param $resourceArray
+     * @param $res
+     * @return mixed
+     */
     private function bindParameters($resourceArray, $res)
     {
         $placeholder = -1;
@@ -157,21 +182,10 @@ class WaterMeterDAO
     }
 
     /**
-     * @param $custArray legal customer parsed in Associative array
-     * @return int succeeded, returns last customer id. if fails, returns null
+     * @param $resourceArray
+     * @param $id
+     * @return null
      */
-    public function create($resourceArray)
-    {
-        $res = $this->PDO->prepare($this->insertStmt);
-        $res = $this->bindParameters($resourceArray, $res);
-        //echo $res->interpolateQuery();
-
-        if (QueryRunner::execute($res)) {
-            return $this->PDO->lastInsertId('ID');
-        }
-        return null;
-    }
-
     public function update($resourceArray, $id)
     {
         $res = $this->PDO->prepare($this->updateStmt);
@@ -184,27 +198,11 @@ class WaterMeterDAO
         return null;
     }
 
-
-
-    public function get($customerDao, $ID)
-    {
-        $result = null;
-
-        $res = $this->PDO->prepare($this->selectStmt);
-        $res->bindParam(':id', $ID, PDO::PARAM_INT);
-        if (QueryRunner::execute($res)) {
-            $result = $res->fetch(PDO::FETCH_OBJ);
-        }
-        if ($result->id_legal != -1) {
-            $customer = $customerDao->getLegal($result->id_legal);
-        } else {
-            $customer = $customerDao->getPhysical($result->id_physical);
-        }
-        if (!$customer) return null;
-        $result = new Watermeter($customer, $result);
-        return $result;
-    }
-
+    /**
+     * @param $dao
+     * @param $ID
+     * @return null
+     */
     public function getAllLegal($dao, $ID)
     {
         $result = null;
@@ -225,6 +223,11 @@ class WaterMeterDAO
         return $result;
     }
 
+    /**
+     * @param $dao
+     * @param $ID
+     * @return null
+     */
     public function getAllPhysical($dao, $ID)
     {
         $result = null;
@@ -246,7 +249,9 @@ class WaterMeterDAO
         return $result;
     }
 
-
+    /**
+     * @return mixed|null
+     */
     public function getMaxID()
     {
         $result = null;
@@ -267,6 +272,9 @@ class WaterMeterDAO
 
     }
 
+    /**
+     * @return mixed
+     */
     public function addConstraint()
     {
         $res1 = $this->PDO->prepare($this->addConstraintStmt);
@@ -293,6 +301,9 @@ class WaterMeterDAO
         return null;
     }
 
+    /**
+     * @return array|null
+     */
     public function getMeta()
     {
         $result = null;
@@ -314,5 +325,29 @@ class WaterMeterDAO
         //$address = Address::create($res);
         $watermeter = new Watermeter($customer, $watermeterStdObj);
         echo json_encode($watermeter, JSON_PRETTY_PRINT);
+    }
+
+    /**
+     * @param $customerDao
+     * @param $ID
+     * @return Watermeter|mixed|null
+     */
+    public function get($customerDao, $ID)
+    {
+        $result = null;
+
+        $res = $this->PDO->prepare($this->selectStmt);
+        $res->bindParam(':id', $ID, PDO::PARAM_INT);
+        if (QueryRunner::execute($res)) {
+            $result = $res->fetch(PDO::FETCH_OBJ);
+        }
+        if ($result->id_legal != -1) {
+            $customer = $customerDao->getLegal($result->id_legal);
+        } else {
+            $customer = $customerDao->getPhysical($result->id_physical);
+        }
+        if (!$customer) return null;
+        $result = new Watermeter($customer, $result);
+        return $result;
     }
 }
