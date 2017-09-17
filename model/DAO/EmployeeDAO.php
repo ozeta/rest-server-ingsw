@@ -47,8 +47,8 @@ class EmployeeDAO
             #stringa caratteristica mysql
             $this->PDO = new PDO("mysql:host=$dbHost", $username, $password);
             #imposta quanti errori mostrare in caso di eccezione
-            //$this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $this->PDO->setAttribute(PDO::ATTR_STATEMENT_CLASS, array("EPDOStatement\EPDOStatement", array($this->PDO)));
+            $this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            //$this->PDO->setAttribute(PDO::ATTR_STATEMENT_CLASS, array("EPDOStatement\EPDOStatement", array($this->PDO)));
 
         } catch (PDOException $e) {
             error_log($e->getMessage() . "\n\n", 3, "./server-errors.log");
@@ -89,6 +89,7 @@ class EmployeeDAO
             "UPDATE $tableName SET
             firstname = :firstname, 
             lastname = :lastname, 
+            username = :username,
             role = :role, 
             birthdate = :birthdate, 
             hiredate = :hiredate, 
@@ -170,10 +171,10 @@ class EmployeeDAO
         $res = $this->PDO->prepare($this->getByCF);
         //echo var_dump($res);
         $res->bindParam(':cf', $CF, PDO::PARAM_INT);
-        if (QueryRunner::execute($res)) {
+        if (QueryRunner::execute($res) > 0) {
             $result = $res->fetch(PDO::FETCH_OBJ);
         }
-        return result;
+        return $result;
     }
 
     public function getEmpByCF($CF)
@@ -181,7 +182,7 @@ class EmployeeDAO
         $res = $this->PDO->prepare($this->getByCF);
         //echo var_dump($res);
         $res->bindParam(':cf', $CF, PDO::PARAM_INT);
-        if (QueryRunner::execute($res)) {
+        if (QueryRunner::execute($res) > 0) {
             $result = $res->fetch(PDO::FETCH_OBJ);
         }
         if ($result) {
@@ -195,19 +196,18 @@ class EmployeeDAO
      */
     public function create($resourceArray)
     {
-        if ($this->getByCF($resourceArray["cf"]["value"]) != null) {
-            return -1;
-        }
-        if ($this->getByUsername($resourceArray["cred"]["username"]) != null) {
-            return -2;
-        }
         $res = $this->PDO->prepare($this->insertStmt);
         $res = $this->bindParameters($resourceArray, $res);
 
-        if (QueryRunner::execute($res)) {
+        $result = QueryRunner::execute($res);
+        if ($result > 0) {
             return $this->PDO->lastInsertId('ID');
+        } elseif ($result < 0) {
+            return $result;
         }
-        return null;
+        else {
+            return null;
+        }
     }
 
     /**
@@ -246,11 +246,12 @@ class EmployeeDAO
     /**
      * @param $resourceArray
      * @param $id
-     * @return int|mixed|null
+     * @return bool|int|null
      */
-    public function update($resourceArray, $id)
+    public function checkInput($resourceArray, $id = null)
     {
-        if (!$this->get($id)) return null;
+
+        if ($id && !$this->get($id)) return null;
         $test = $this->getEmpByCF($resourceArray["cf"]["value"]);
         if ($test && $test->getId() != $resourceArray["ID"]) {
             echo $test->getId() . "!=" . $resourceArray["ID"];
@@ -261,6 +262,17 @@ class EmployeeDAO
         if ($test->getUsername() != $resourceArray["cred"]["username"]) {
             return -2;
         }
+
+        return true;
+    }
+
+    /**
+     * @param $resourceArray
+     * @param $id
+     * @return int|mixed|null
+     */
+    public function update($resourceArray, $id)
+    {
         if ($resourceArray["cred"]["password"] == null) {
             $res = $this->PDO->prepare($this->updateWOoutCredentialsStmt);
         } else {
@@ -269,11 +281,7 @@ class EmployeeDAO
         $res = $this->bindParameters($resourceArray, $res);
         $res->bindValue(':id', $id);
         //  echo $res->interpolateQuery();
-
-
-        $result = QueryRunner::execute($res);
-
-        return $result;
+        return QueryRunner::execute($res);
     }
 
     /**
@@ -285,7 +293,7 @@ class EmployeeDAO
         $res = $this->PDO->prepare($this->selectStmt);
         //echo var_dump($res);
         $res->bindParam(':id', $ID, PDO::PARAM_INT);
-        if (QueryRunner::execute($res)) {
+        if (QueryRunner::execute($res) > 0) {
             $result = $res->fetch(PDO::FETCH_OBJ);
         }
         if ($result) {
@@ -305,7 +313,7 @@ class EmployeeDAO
         $res = $this->PDO->prepare($this->selectUsernameStmt);
         $res->bindParam(':username', $username, PDO::PARAM_INT);
         // $res->interpolateQuery();
-        if (QueryRunner::execute($res)) {
+        if (QueryRunner::execute($res) > 0) {
             $result = $res->fetch(PDO::FETCH_OBJ);
             return new Employee($result);
         }
@@ -375,7 +383,7 @@ class EmployeeDAO
     public function getMaxID()
     {
         $res = $this->PDO->prepare($this->selectMaxId);
-        if (QueryRunner::execute($res)) {
+        if (QueryRunner::execute($res) > 0) {
             $result = $res->fetch(PDO::FETCH_OBJ);
         }
         //echo var_dump($result);
@@ -407,27 +415,42 @@ class EmployeeDAO
     }
 
     /**
-     * @param $queryUrl
+     * @param $queryUrl string
      * @return null
      */
     public function search($queryUrl)
     {
+
+        //finds [gt|eq|lt][date] in the query
+        $pattern = '((gt|eq|lt)\[([\d-]+)\])';
+
+        $map = ["gt" => ">=","eq" => "=","lt" => "<="];
         $queryArr = null;
         $whereStmt = "";
         $row = null;
         parse_str($queryUrl, $queryArr);
         foreach ($queryArr as $key => $value) {
-            $whereStmt .= "$key = :$key ";
-            if ($value != end($queryArr)) $whereStmt .= "and ";
-
+            if (preg_match($pattern, $value, $match) > 0) {
+                if (in_array($match[1], array_keys($map))) {
+                    $whereStmt .= "$key " . $map[$match[1]] . " :$key ";
+                }
+            } else {
+                $whereStmt .= "$key = :$key ";
+            }
+            if ($value != end($queryArr)) {
+                $whereStmt .= "and ";
+            }
         }
         $newQuery = "$this->querySql WHERE $whereStmt ORDER BY id";
-
         $res = $this->PDO->prepare($newQuery);
         foreach ($queryArr as $key => $value) {
+            preg_match($pattern, $value, $match);
+            if (isset($match[2])) {
+                $value = $match[2];
+            }
             $res->bindValue($key, $value);
         }
-        if (QueryRunner::execute($res)) {
+        if (QueryRunner::execute($res) > 0) {
             $result = null;
             $i = 0;
             $row = $res->fetchAll(PDO::FETCH_OBJ);
@@ -447,7 +470,7 @@ class EmployeeDAO
         if (!$this->get($ID)) return null;
         $res = $this->PDO->prepare($this->deleteStmt);
         $res->bindParam(':id', $ID, PDO::PARAM_INT);
-        if (QueryRunner::execute($res)) {
+        if (QueryRunner::execute($res) > 0) {
             if ($res->rowCount() == 1) return true;
         }
         return null;
@@ -461,9 +484,16 @@ class EmployeeDAO
         $result = null;
         $getMetaStmt = "SHOW COLUMNS FROM $this->tableName";
         $res = $this->PDO->prepare($getMetaStmt);
-        if (QueryRunner::execute($res)) {
+        if (QueryRunner::execute($res) > 0) {
             $result = $res->fetchAll(PDO::FETCH_COLUMN, 0);
         }
-        return $result;
+        $tmp = null;
+        $i = 0;
+        foreach ($result as $index => $item) {
+            if (strcmp($item, "password") != 0) {
+                $tmp[$i++] = $item;
+            }
+        }
+        return $tmp;
     }
 }

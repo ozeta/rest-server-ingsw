@@ -65,29 +65,40 @@ class CustomerRest implements RestInterface
                 } else if ($request->getRequestMethod() == 'GET') {
                     $res = $this->dao->getLegal($id);
                 } else if ($request->getRequestMethod() == 'PUT' && is_numeric($id)) {
-
+                    if ($resourceArray == null) {
+                        return new Response(404, "expecting json file");
+                    }
                     $res = $this->dao->updateLegal($resourceArray, $id);
                     if ($res != null) {
-                        if ($res === -1) {
-                            var_dump($res);
-                            return new Response(420, "CF associated on other user");
-                        } else if ($res === -2) {
-                            var_dump($res);
-                            return new Response(421, "PIVA associated on other user");
+
+                        if ($res === QCFCODE) {
+                            return new Response(CFCODE, "CF in conflict");
+                        } else if ($res === QUSERCODE) {
+                            return new Response(USERCODE, "Username in conflict");
+                        } else if ($res === QPHONECODE) {
+                            return new Response(PHONECODE, "Phone in conflict");
+                        } else if ($res === QEMAILCODE) {
+                            return new Response(EMAILCODE, "Email in conflict");
                         }
                     }
 
                 } else if ($request->getRequestMethod() == 'DELETE') {
                     $res = $this->dao->deleteLegal($id);
                 } elseif ($request->getRequestMethod() == 'POST' && !isset($tokens[2])) {
+                    if ($resourceArray == null) {
+                        return new Response(404, "expecting json file");
+                    }
                     $res = $this->dao->createLegal($resourceArray);
                     if ($res != null) {
-                        if ($res == -1) {
-                            return new Response(420, "CF already exists");
-                        } else if ($res == -2) {
-                            return new Response(421, "PIVA already exists");
-                        } else if ($res == -3) {
-                            return new Response(421, "PIVA too long");
+
+                        if ($res === QCFCODE) {
+                            return new Response(CFCODE, "CF in conflict");
+                        } else if ($res === QUSERCODE) {
+                            return new Response(USERCODE, "Username in conflict");
+                        } else if ($res === QPHONECODE) {
+                            return new Response(PHONECODE, "Phone in conflict");
+                        } else if ($res === QEMAILCODE) {
+                            return new Response(EMAILCODE, "Email in conflict");
                         }
                     }
                 }
@@ -99,22 +110,39 @@ class CustomerRest implements RestInterface
                 } else if ($request->getRequestMethod() == 'GET' && is_numeric($id)) {
                     $res = $this->dao->getPhysical($id);
                 } else if ($request->getRequestMethod() == 'PUT' && is_numeric($id)) {
+                    if ($resourceArray == null) {
+                        return new Response(404, "expecting json file");
+                    }
                     $res = $this->dao->updatePhysical($resourceArray, $id);
                     if ($res != null) {
-                        if ($res === -1) {
-                            var_dump($res);
-                            return new Response(420, "CF associated on other user");
+                        if ($res === QCFCODE) {
+                            return new Response(CFCODE, "CF in conflict");
+                        } else if ($res === QUSERCODE) {
+                            return new Response(USERCODE, "Username in conflict");
+                        } else if ($res === QPHONECODE) {
+                            return new Response(PHONECODE, "Phone in conflict");
+                        } else if ($res === QEMAILCODE) {
+                            return new Response(EMAILCODE, "Email in conflict");
                         }
                     }
 
                 } else if ($request->getRequestMethod() == 'DELETE' && is_numeric($id)) {
                     $res = $this->dao->deletePhysical($id);
                 } elseif ($request->getRequestMethod() == 'POST' && !isset($tokens[2])) {
+                    if ($resourceArray == null) {
+                        return new Response(404, "expecting json file");
+                    }
                     //var_dump($resourceArray);
                     $res = $this->dao->createPhysical($resourceArray);
                     if ($res != null) {
-                        if ($res == -1) {
-                            return new Response(404, "CF already exists");
+                        if ($res === QCFCODE) {
+                            return new Response(CFCODE, "CF in conflict");
+                        } else if ($res === QUSERCODE) {
+                            return new Response(USERCODE, "Username in conflict");
+                        } else if ($res === QPHONECODE) {
+                            return new Response(PHONECODE, "Phone in conflict");
+                        } else if ($res === QEMAILCODE) {
+                            return new Response(EMAILCODE, "Email in conflict");
                         }
                     }
                 }

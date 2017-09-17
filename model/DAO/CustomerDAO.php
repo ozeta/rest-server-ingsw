@@ -217,26 +217,19 @@ class CustomerDAO
      */
     public function createLegal($resourceArray)
     {
-
-        if ($this->getLegalByCF($resourceArray["cf"]["value"]) != null) {
-            return -1;
-        }
-        if ($this->getLegalByPIVA($resourceArray["PIVA"]) != null) {
-            return -2;
-        }
-
-        if (strlen($resourceArray["PIVA"]) > 20) {
-            return -3;
-        }
         $res = $this->PDO->prepare($this->insertLegalStmt);
         $res = $this->bindLegal($res, $resourceArray);
 
         //echo $res->interpolateQuery();
-        if (QueryRunner::execute($res)) {
-            return $this->PDO->lastInsertId('ID');
+        $result = QueryRunner::execute($res);
 
+        if ($result > 0) {
+            return $this->PDO->lastInsertId('ID');
+        } elseif ($result < 0) {
+            return $result;
+        } else {
+            return null;
         }
-        return null;
     }
 
     /**
@@ -266,18 +259,18 @@ class CustomerDAO
     public function createPhysical($resourceArray)
     {
 
-        if ($this->getPhysicalByCF($resourceArray["cf"]["value"]) != null) {
-            return -1;
-        }
-
-
         $res = $this->PDO->prepare($this->insertPhysicalStmt);
         $res = $this->bindPhysical($res, $resourceArray);
         //echo $res->interpolateQuery();
-        if (QueryRunner::execute($res)) {
+        $result = QueryRunner::execute($res);
+
+        if ($result > 0) {
             return $this->PDO->lastInsertId('ID');
+        } elseif ($result < 0) {
+            return $result;
+        } else {
+            return null;
         }
-        return null;
     }
 
     /**
@@ -287,16 +280,10 @@ class CustomerDAO
      */
     public function updateLegal($resourceArray, $id)
     {
-        if (!$this->getLegal($id)) return null;
-        $test = $this->getLegalByCF($resourceArray["cf"]["value"]);
-        if ($test && $test->getId() != $resourceArray["id"] ) {
-            echo $test->getId()."!=".$resourceArray["id"];
-            return -1;
-        }
-        $test = $this->getLegalByPIVA($resourceArray["PIVA"]);
-        if ($test && $test->getId() != $resourceArray["id"] ) {
-            echo $test->getId()."!=".$resourceArray["id"];
-            return -2;
+        //check id match:
+        if ($id != $resourceArray["id"]) {
+            echo "id mismatch between url:" . id . "and json: " . $resourceArray["id"] . ")";
+            return 0;
         }
 
         //echo "$test->getId(), ".$resourceArray['cf']['value'];
@@ -306,7 +293,11 @@ class CustomerDAO
 
         $result = QueryRunner::execute($res);
 
-        return $result;
+        if ($result != 0) {
+            return $result;
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -337,16 +328,21 @@ class CustomerDAO
      */
     public function updatePhysical($resourceArray, $id)
     {
-        if (!$this->getPhysical($id)) return null;
-        $test = $this->getPhysicalByCF($resourceArray["cf"]["value"]);
-        if ($test && $test->getId() != $resourceArray["id"] ) {
-            return -1;
+        //check id match:
+        if ($id != $resourceArray["id"]) {
+            echo "id mismatch between url:" . id . "and json: " . $resourceArray["id"] . ")";
+            return 0;
         }
+
         $res = $this->PDO->prepare($this->updatePhysicalStmt);
         $res->bindParam(':id', $id);
-        $res = $this->bindPhysical($res, $resourceArray);
+        $result = $this->bindPhysical($res, $resourceArray);
         //echo $res->interpolateQuery();
-        return QueryRunner::execute($res);
+        if ($result != 0) {
+            return $result;
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -407,15 +403,15 @@ class CustomerDAO
             return new Legal($result);
         }
         return null;
-/*        try {
-            $res->execute();
-            $result = $res->fetch(PDO::FETCH_OBJ);
-            if ($result) {
-                return new Legal($result);
-            }
-        } catch (PDOException $e) {
-            return null;
-        }*/
+        /*        try {
+                    $res->execute();
+                    $result = $res->fetch(PDO::FETCH_OBJ);
+                    if ($result) {
+                        return new Legal($result);
+                    }
+                } catch (PDOException $e) {
+                    return null;
+                }*/
     }
 
     public function getPhysical($ID)
@@ -485,16 +481,30 @@ class CustomerDAO
     /**
      * @param $queryUrl
      * @param $querySql
-     * @return array of entities
+     * @return mixed|null
      */
-    private function search($queryUrl, $querySql)
+    private function searchAA($queryUrl, $querySql)
     {
+        //finds [gt|eq|lt][date] in the query
+        $pattern = '((gt|eq|lt)\[([\d-]+)\])';
         $queryArr = null;
         $whereStmt = "";
         $row = null;
         parse_str($queryUrl, $queryArr);
         foreach ($queryArr as $key => $value) {
-            $whereStmt .= "$key = :$key ";
+            preg_match($pattern, $value, $match);
+            if (isset($match) && $match[1] == "gt") {
+                $whereStmt .= "$key >= :$key ";
+            } elseif (isset($match) && $match[1] == "eq") {
+                $whereStmt .= "$key = :$key ";
+            } elseif (isset($match) && $match[1] == "lt") {
+                $whereStmt .= "$key <= :$key ";
+            } else {
+                $whereStmt .= "$key = :$key ";
+            }
+            if ($value != end($queryArr)) {
+                $whereStmt .= "and ";
+            }
             if ($value != end($queryArr)) $whereStmt .= "and ";
 
         }
@@ -502,6 +512,51 @@ class CustomerDAO
 
         $res = $this->PDO->prepare($newQuery);
         foreach ($queryArr as $key => $value) {
+            preg_match($pattern, $value, $match);
+            if (isset($match[2])) {
+                $value = $match[2];
+            }
+            $res->bindValue($key, $value);
+        }
+        return $res;
+    }
+
+
+    /**
+     * @param $queryUrl
+     * @param $querySql
+     * @return mixed|null
+     */
+    private function search($queryUrl, $querySql)
+    {
+        //finds [gt|eq|lt][date] in the query
+        $pattern = '((gt|eq|lt)\[([\d-]+)\])';
+
+        $map = ["gt" => ">=","eq" => "=","lt" => "<="];
+        $queryArr = null;
+        $whereStmt = "";
+        $row = null;
+        parse_str($queryUrl, $queryArr);
+        foreach ($queryArr as $key => $value) {
+            if (preg_match($pattern, $value, $match) > 0) {
+                if (in_array($match[1], array_keys($map))) {
+                    $whereStmt .= "$key " . $map[$match[1]] . " :$key ";
+                }
+            } else {
+                $whereStmt .= "$key = :$key ";
+            }
+            if ($value != end($queryArr)) {
+                $whereStmt .= "and ";
+            }
+        }
+        $newQuery = "$querySql WHERE $whereStmt ORDER BY id";
+
+        $res = $this->PDO->prepare($newQuery);
+        foreach ($queryArr as $key => $value) {
+            preg_match($pattern, $value, $match);
+            if (isset($match[2])) {
+                $value = $match[2];
+            }
             $res->bindValue($key, $value);
         }
         return $res;
@@ -533,7 +588,6 @@ class CustomerDAO
     public function searchPhysical($queryUrl)
     {
         $res = $this->search($queryUrl, $this->queryPhysicalSql);
-
         if (QueryRunner::execute($res)) {
             $result = null;
             $i = 0;
@@ -588,7 +642,14 @@ class CustomerDAO
         if (QueryRunner::execute($res)) {
             $result = $res->fetchAll(PDO::FETCH_COLUMN, 0);
         }
-        return $result;
+        $tmp = null;
+        $i = 0;
+        foreach ($result as $index => $item) {
+            if (strcmp($item, "street_number") != 0) {
+                $tmp[$i++] = $item;
+            }
+        }
+        return $tmp;
     }
 
     /**
@@ -603,7 +664,14 @@ class CustomerDAO
         if (QueryRunner::execute($res)) {
             $result = $res->fetchAll(PDO::FETCH_COLUMN, 0);
         }
-        return $result;
+        $tmp = null;
+        $i = 0;
+        foreach ($result as $index => $item) {
+            if (strcmp($item, "street_number") != 0) {
+                $tmp[$i++] = $item;
+            }
+        }
+        return $tmp;
     }
 
     /**

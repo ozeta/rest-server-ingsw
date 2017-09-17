@@ -50,8 +50,8 @@ class WaterMeterDAO
             #stringa caratteristica mysql
 
             $this->PDO = new PDO ("mysql:host=$dbHost", $username, $password);
-            //$this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $this->PDO->setAttribute(PDO::ATTR_STATEMENT_CLASS, array("EPDOStatement\EPDOStatement", array($this->PDO)));
+            $this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            //$this->PDO->setAttribute(PDO::ATTR_STATEMENT_CLASS, array("EPDOStatement\EPDOStatement", array($this->PDO)));
         } catch (PDOException $e) {
             error_log($e->getMessage() . "\n\n", 3, "./server-errors.log");
         }
@@ -75,6 +75,7 @@ class WaterMeterDAO
             cap           varchar(255) NOT NULL, 
             id_physical   int(11), 
             id_legal      int(11), 
+            contract_date int(11), 
             PRIMARY KEY (id));
             ";
 
@@ -85,7 +86,7 @@ class WaterMeterDAO
         $this->insertStmt = /** @lang mysql */
             "INSERT INTO $tableName
             (
-            city, prov, street, street_number, cap, id_legal, id_physical) 
+            city, prov, street, street_number, cap, id_legal, id_physical, contract_date) 
             VALUES 
             (
             :city, 
@@ -94,7 +95,8 @@ class WaterMeterDAO
             :street_number, 
             :cap, 
             :id_legal, 
-            :id_physical
+            :id_physical,
+            now()
             );";
         $this->selectLegalStmt = /** @lang mysql */
             "SELECT *
@@ -295,7 +297,7 @@ class WaterMeterDAO
         $res = $this->PDO->prepare($this->deleteStmt);
         $res->bindParam(':id', $ID, PDO::PARAM_INT);
         //echo $res->interpolateQuery();
-         if (QueryRunner::execute($res)) {
+        if (QueryRunner::execute($res)) {
             if ($res->rowCount() == 1) return true;
         }
         return null;
@@ -350,4 +352,66 @@ class WaterMeterDAO
         $result = new Watermeter($customer, $result);
         return $result;
     }
+
+    /**
+     * @param $queryUrl
+     * @param $querySql
+     * @return mixed|null
+     */
+    public function search($customerDao, $queryUrl)
+    {
+        //finds [gt|eq|lt][date] in the query
+        $pattern = '((gt|eq|lt)\[([\d-]+)\])';
+
+        $map = ["gt" => ">=", "eq" => "=", "lt" => "<="];
+        $queryArr = null;
+        $whereStmt = "";
+        $row = null;
+        parse_str($queryUrl, $queryArr);
+        foreach ($queryArr as $key => $value) {
+            if (preg_match($pattern, $value, $match) > 0) {
+                if (in_array($match[1], array_keys($map))) {
+                    $whereStmt .= "$key " . $map[$match[1]] . " :$key ";
+                }
+            } else {
+                $whereStmt .= "$key = :$key ";
+            }
+            if ($value != end($queryArr)) {
+                $whereStmt .= "and ";
+            }
+        }
+        $newQuery = "$this->querySql WHERE $whereStmt ORDER BY id";
+        $res = $this->PDO->prepare($newQuery);
+        foreach ($queryArr as $key => $value) {
+            preg_match($pattern, $value, $match);
+            if (isset($match[2])) {
+                $value = $match[2];
+            }
+            $res->bindValue($key, $value);
+        }
+        $result = null;
+        if (QueryRunner::execute($res) > 0) {
+            $i = 0;
+            $row = $res->fetchAll(PDO::FETCH_OBJ);
+            foreach ($row as $key => $value) {
+                $cust = $this->PDO->prepare($this->selectStmt);
+                $cust->bindParam(':id', $value->id, PDO::PARAM_INT);
+                if (QueryRunner::execute($cust)) {
+                    $cust_res = $cust->fetch(PDO::FETCH_OBJ);
+                }
+                if ($cust_res->id_legal != -1) {
+                    $customer = $customerDao->getLegal($cust_res->id_legal);
+                } else {
+                    $customer = $customerDao->getPhysical($cust_res->id_physical);
+                }
+//                echo var_dump($value) . "\n\n";
+//                echo var_dump($customer);
+                $result[$i++] = new Watermeter($customer, $value);
+            }
+        }
+
+        return $result;
+    }
+
+
 }

@@ -28,6 +28,18 @@ define("DBTABLE", "user");
 define("DBUSER", "softengunina10");
 define("DBPASSWORD", "");
 define("VERBOSE", true);
+
+define("QCFCODE", -1);
+define("QUSERCODE", -2);
+define("QPIVACODE", -3);
+define("QPHONECODE", -4);
+define("QEMAILCODE", -5);
+
+define("CFCODE", 420);
+define("USERCODE", 421);
+define("PIVACODE", 422);
+define("PHONECODE", 423);
+define("EMAILCODE", 424);
 /*
 //aws ec2-54-186-152-131.us-west-2.compute.amazonaws.com
 define("DBHOST", "localhost");

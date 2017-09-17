@@ -85,12 +85,15 @@ class WaterMeterRest implements RestInterface
                     $resArray = json_decode($request->getAttachedJson(), true);
                     $res = $this->watermeterDao->create($resArray);
                 }
+            } elseif ($request->getRequestMethod() == 'GET' && isset($tokens[1])) {
+                //SEARCH
+                $res = $this->watermeterDao->search($this->customerDao, $tokens[1]);
             }
         }
         if ($res == null) {
             $response = new Response(404);
         } else {
-            if (is_numeric($res)){
+            if (is_numeric($res)) {
                 $response = new Response(200, $res);
             } else {
                 $response = new Response(200, json_encode($res, JSON_PRETTY_PRINT));

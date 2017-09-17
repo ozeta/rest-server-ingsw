@@ -52,14 +52,18 @@ class EmployeeRest implements RestInterface
                 } elseif ($request->getRequestMethod() == 'DELETE') {
                     $res = $this->dao->delete($id);
                 } elseif ($request->getRequestMethod() == 'PUT') {
-                    if  ($resourceArray == null){
+                    if ($resourceArray == null) {
                         return new Response(404, "expecting json file");
                     }
                     $res = $this->dao->update($resourceArray, $id);
-                    if ($res === -1) {
-                        return new Response(420, "CF in conflict");
-                    } else if ($res === -2) {
-                        return new Response(421, "Username in conflict");
+                    if ($res === QCFCODE) {
+                        return new Response(CFCODE, "CF in conflict");
+                    } else if ($res === QUSERCODE) {
+                        return new Response(USERCODE, "Username in conflict");
+                    } else if ($res === QPHONECODE) {
+                        return new Response(PHONECODE, "Phone in conflict");
+                    } else if ($res === QEMAILCODE) {
+                        return new Response(EMAILCODE, "Email in conflict");
                     }
                 }
             } elseif ($request->getRequestMethod() == 'GET' && isset($tokens[1])) {
@@ -70,10 +74,14 @@ class EmployeeRest implements RestInterface
                     return new Response(404, "I'm expecting a Json array");
                 }
                 $res = $this->dao->create($resourceArray);
-                if ($res == -1) {
-                    return new Response(420, "CF already exists");
-                } else if ($res == -2) {
-                    return new Response(421, "Username already exists");
+                if ($res === QCFCODE) {
+                    return new Response(CFCODE, "CF in conflict");
+                } else if ($res === QUSERCODE) {
+                    return new Response(USERCODE, "Username in conflict");
+                } else if ($res === QPHONECODE) {
+                    return new Response(PHONECODE, "Phone in conflict");
+                } else if ($res === QEMAILCODE) {
+                    return new Response(EMAILCODE, "Email in conflict");
                 }
             }
         }

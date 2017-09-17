@@ -24,11 +24,25 @@ class   QueryRunner
         try {
             return $stmt->execute();
         } catch (PDOException $e) {
-            error_log($e->getMessage() . "\n\n", 3, "./server-errors.log");
-            echo "(!) " . $e->getMessage();
-            echo "\nline: $e->getLine()\n";
-            echo "\n$e->errorInfo\n";
-            echo "\n$e->getTraceAsString()\n";
+
+            if (isset($e->errorInfo) && isset($e->errorInfo[2])) {
+//                echo($e->errorInfo[2]);
+                if (preg_match('#\'cf\'#', $e->errorInfo[2], $match) > 0) {
+                    return QCFCODE;
+                }
+                if (preg_match('#\'username\'#', $e->errorInfo[2], $match) > 0) {
+                    return QUSERCODE;
+                }
+                preg_match('#\'phone\'#', $e->errorInfo[2], $match);
+                if (preg_match('#\'phone\'#', $e->errorInfo[2], $match) > 0) {
+                    return QPHONECODE;
+                }
+                if (preg_match('#\'email\'#', $e->errorInfo[2], $match) > 0) {
+                    return QEMAILCODE;
+                }
+
+
+            }
             return false;
         }
     }
