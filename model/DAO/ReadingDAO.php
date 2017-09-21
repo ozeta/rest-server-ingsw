@@ -47,8 +47,6 @@ class ReadingDAO
         $this->tableName = $tableName;
 
         try {
-            #stringa caratteristica mysql
-
             $this->PDO = new PDO ("mysql:host=$dbHost", $username, $password);
             $this->PDO->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             //$this->PDO->setAttribute(PDO::ATTR_STATEMENT_CLASS, array("EPDOStatement\EPDOStatement", array($this->PDO)));

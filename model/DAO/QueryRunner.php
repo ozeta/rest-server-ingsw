@@ -23,10 +23,16 @@ class   QueryRunner
     {
         try {
             return $stmt->execute();
-        } catch (PDOException $e) {
 
+        } catch (PDOException $e) {
+            if ($e->getCode() == 23000) {
+
+                 var_dump($stmt);
+                echo $e->getMessage();
+            } else {
+            }
+//            echo var_dump($e);
             if (isset($e->errorInfo) && isset($e->errorInfo[2])) {
-//                echo($e->errorInfo[2]);
                 if (preg_match('#\'cf\'#', $e->errorInfo[2], $match) > 0) {
                     return QCFCODE;
                 }

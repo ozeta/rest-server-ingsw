@@ -290,7 +290,6 @@ class CustomerDAO
         $res = $this->PDO->prepare($this->updateLegalStmt);
         $res->bindParam(':id', $id);
         $res = $this->bindLegal($res, $resourceArray);
-
         $result = QueryRunner::execute($res);
 
         if ($result != 0) {
@@ -336,8 +335,10 @@ class CustomerDAO
 
         $res = $this->PDO->prepare($this->updatePhysicalStmt);
         $res->bindParam(':id', $id);
-        $result = $this->bindPhysical($res, $resourceArray);
-        //echo $res->interpolateQuery();
+        $res = $this->bindPhysical($res, $resourceArray);
+
+        $result = QueryRunner::execute($res);
+
         if ($result != 0) {
             return $result;
         } else {
@@ -679,7 +680,6 @@ class CustomerDAO
      */
     public function jsonTest($id)
     {
-        $ownerID = -1;
         $owner = null;
 
         $owner = $this->getPhysical($id);

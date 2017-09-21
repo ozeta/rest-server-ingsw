@@ -165,7 +165,7 @@ class WaterMeterDAO
      */
     private function bindParameters($resourceArray, $res)
     {
-        $placeholder = -1;
+        $placeholder = null;
         if (isset($resourceArray["owner"]["PIVA"])) {
             //legal
             $res->bindParam(':id_legal', $resourceArray["owner"]["id"]);
@@ -320,7 +320,6 @@ class WaterMeterDAO
     public function jsonTest($dao)
     {
         $watermeterStdObj = $this->get($dao, 10);
-        $ownerID = -1;
         $owner = null;
         $customer = $dao->getLegal(12);
 
@@ -343,7 +342,7 @@ class WaterMeterDAO
         if (QueryRunner::execute($res)) {
             $result = $res->fetch(PDO::FETCH_OBJ);
         }
-        if ($result->id_legal != -1) {
+        if ($result->id_legal != null) {
             $customer = $customerDao->getLegal($result->id_legal);
         } else {
             $customer = $customerDao->getPhysical($result->id_physical);
@@ -399,7 +398,7 @@ class WaterMeterDAO
                 if (QueryRunner::execute($cust)) {
                     $cust_res = $cust->fetch(PDO::FETCH_OBJ);
                 }
-                if ($cust_res->id_legal != -1) {
+                if ($cust_res->id_legal != null) {
                     $customer = $customerDao->getLegal($cust_res->id_legal);
                 } else {
                     $customer = $customerDao->getPhysical($cust_res->id_physical);
