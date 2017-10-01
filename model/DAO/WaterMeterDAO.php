@@ -314,7 +314,15 @@ class WaterMeterDAO
         if (QueryRunner::execute($res)) {
             $result = $res->fetchAll(PDO::FETCH_COLUMN, 0);
         }
-        return $result;
+        $tmp = null;
+        $i = 0;
+        foreach ($result as $index => $item) {
+            $testa = strcmp($item, "contract_end_date");
+            if ($testa != 0 ) {
+                $tmp[$i++] = $item;
+            }
+        }
+        return $tmp;
     }
 
     public function jsonTest($dao)
